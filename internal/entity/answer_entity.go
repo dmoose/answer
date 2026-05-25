@@ -53,6 +53,7 @@ type Answer struct {
 	CommentCount   int       `xorm:"not null default 0 INT(11) comment_count"`
 	VoteCount      int       `xorm:"not null default 0 INT(11) vote_count"`
 	RevisionID     string    `xorm:"not null default 0 BIGINT(20) revision_id"`
+	SiteID         string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 type AnswerSearch struct {

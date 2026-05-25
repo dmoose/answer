@@ -38,6 +38,7 @@ type BadgeAward struct {
 	AwardKey       string    `xorm:"not null index VARCHAR(64) award_key"`
 	BadgeGroupID   int64     `xorm:"not null index BIGINT(20) badge_group_id"`
 	IsBadgeDeleted int8      `xorm:"not null TINYINT(1) is_badge_deleted"`
+	SiteID         string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName badge_award table name

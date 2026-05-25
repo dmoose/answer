@@ -39,6 +39,7 @@ type Review struct {
 	Submitter      string    `xorm:"not null default '' VARCHAR(100) submitter"`
 	Reason         string    `xorm:"not null TEXT reason"`
 	Status         int       `xorm:"not null default 0 INT(11) status"`
+	SiteID         string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName review table name

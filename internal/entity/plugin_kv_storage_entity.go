@@ -25,6 +25,7 @@ type PluginKVStorage struct {
 	Group          string `xorm:"not null VARCHAR(128) UNIQUE(uk_psg) 'group'"`
 	Key            string `xorm:"not null VARCHAR(128) UNIQUE(uk_psg) 'key'"`
 	Value          string `xorm:"not null TEXT value"`
+	SiteID         string `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 func (PluginKVStorage) TableName() string {

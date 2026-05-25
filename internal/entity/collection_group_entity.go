@@ -29,6 +29,7 @@ type CollectionGroup struct {
 	UserID       string    `xorm:"not null default 0 BIGINT(20) INDEX user_id"`
 	Name         string    `xorm:"not null default '' VARCHAR(50) name"`
 	DefaultGroup int       `xorm:"not null default 1 INT(11) default_group"`
+	SiteID       string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName collection group table name

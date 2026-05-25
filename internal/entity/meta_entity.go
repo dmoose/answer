@@ -37,6 +37,7 @@ type Meta struct {
 	ObjectID  string    `xorm:"not null default 0 INDEX BIGINT(20) object_id"`
 	Key       string    `xorm:"not null VARCHAR(100) key"`
 	Value     string    `xorm:"not null MEDIUMTEXT value"`
+	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName meta table name

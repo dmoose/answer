@@ -50,6 +50,7 @@ type Report struct {
 	FlaggedType    int       `xorm:"not null default 0 INT(11) flagged_type"`
 	FlaggedContent string    `xorm:"TEXT flagged_content"`
 	Status         int       `xorm:"not null default 1 INT(11) status"`
+	SiteID         string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName report table name

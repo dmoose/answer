@@ -37,6 +37,7 @@ type FileRecord struct {
 	ObjectID  string    `xorm:"not null default 0 INDEX BIGINT(20) object_id"`
 	Source    string    `xorm:"not null VARCHAR(128) source"`
 	Status    int       `xorm:"not null default 0 TINYINT(4) status"`
+	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName file record table name

@@ -33,6 +33,7 @@ type Notification struct {
 	MsgType   int       `xorm:"not null default 0 INT(11) msg_type"`
 	IsRead    int       `xorm:"not null default 1 INT(11) is_read"`
 	Status    int       `xorm:"not null default 1 INT(11) status"`
+	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName notification table name

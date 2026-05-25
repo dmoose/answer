@@ -29,6 +29,7 @@ type SiteInfo struct {
 	Type      string    `xorm:"not null VARCHAR(64) type"`
 	Content   string    `xorm:"not null MEDIUMTEXT content"`
 	Status    int       `xorm:"not null default 1 INT(11) status"`
+	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName table name

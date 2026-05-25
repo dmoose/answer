@@ -31,7 +31,8 @@ import (
 type Config struct {
 	ID    int    `xorm:"not null pk autoincr INT(11) id"`
 	Key   string `xorm:"unique VARCHAR(128) key"`
-	Value string `xorm:"TEXT value"`
+	Value  string `xorm:"TEXT value"`
+	SiteID string `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName config table name

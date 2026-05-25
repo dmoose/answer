@@ -47,6 +47,7 @@ type Comment struct {
 	Status         int           `xorm:"not null default 0 TINYINT(4) status"`
 	OriginalText   string        `xorm:"not null MEDIUMTEXT original_text"`
 	ParsedText     string        `xorm:"not null MEDIUMTEXT parsed_text"`
+	SiteID         string        `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName comment table name

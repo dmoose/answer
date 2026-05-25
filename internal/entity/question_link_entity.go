@@ -37,6 +37,7 @@ type QuestionLink struct {
 	ToQuestionID   string    `xorm:"not null default 0 BIGINT(20) index to_question_id"`
 	ToAnswerID     string    `xorm:"BIGINT(20) to_answer_id"`
 	Status         int       `xorm:"not null default 1 INT(11) status"`
+	SiteID         string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 func (QuestionLink) TableName() string {

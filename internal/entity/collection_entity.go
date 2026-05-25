@@ -29,6 +29,7 @@ type Collection struct {
 	UserID                string    `xorm:"not null default 0 BIGINT(20) INDEX user_id"`
 	ObjectID              string    `xorm:"not null default 0 BIGINT(20) object_id"`
 	UserCollectionGroupID string    `xorm:"not null default 0 BIGINT(20) user_collection_group_id"`
+	SiteID                string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 type CollectionSearch struct {

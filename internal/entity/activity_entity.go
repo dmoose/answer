@@ -41,6 +41,7 @@ type Activity struct {
 	Rank             int       `xorm:"not null default 0 INT(11) rank"`
 	HasRank          int       `xorm:"not null default 0 TINYINT(4) has_rank"`
 	RevisionID       int64     `xorm:"not null default 0 BIGINT(20) revision_id"`
+	SiteID           string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 type ActivityRankSum struct {

@@ -47,6 +47,7 @@ type Revision struct {
 	Log          string    `xorm:"VARCHAR(255) log"`
 	Status       int       `xorm:"not null default 1 INT(11) status"`
 	ReviewUserID int64     `xorm:"not null default 0 BIGINT(20) review_user_id"`
+	SiteID       string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName revision table name

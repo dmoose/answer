@@ -24,6 +24,7 @@ type PluginConfig struct {
 	ID             int    `xorm:"not null pk autoincr INT(11) id"`
 	PluginSlugName string `xorm:"unique VARCHAR(128) plugin_slug_name"`
 	Value          string `xorm:"TEXT value"`
+	SiteID         string `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
 }
 
 // TableName config table name

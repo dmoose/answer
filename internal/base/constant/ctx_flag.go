@@ -22,6 +22,7 @@ package constant
 const (
 	AcceptLanguageFlag = "Accept-Language"
 	ShortIDFlag        = "Short-ID-Enabled"
+	SiteIDFlag         = "Site-ID"
 )
 
 type ContextKey string
@@ -29,4 +30,5 @@ type ContextKey string
 const (
 	AcceptLanguageContextKey ContextKey = ContextKey(AcceptLanguageFlag)
 	ShortIDContextKey        ContextKey = ContextKey(ShortIDFlag)
+	SiteIDContextKey         ContextKey = ContextKey(SiteIDFlag)
 )
