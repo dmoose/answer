@@ -57,7 +57,7 @@ func (cr configRepo) GetConfigByID(ctx context.Context, id int) (c *entity.Confi
 	}
 
 	c = &entity.Config{}
-	exist, err = cr.data.DB.Context(ctx).ID(id).Get(c)
+	exist, err = cr.data.SiteDB(ctx).ID(id).Get(c)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -84,12 +84,19 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 	}
 
 	c = &entity.Config{Key: key}
-	exist, err = cr.data.DB.Context(ctx).Get(c)
+	exist, err = cr.data.SiteDB(ctx).Get(c)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	if !exist {
-		return nil, fmt.Errorf("config not found by key: %s", key)
+		// fall back to global default (site_id = '')
+		c, exist, err = cr.getConfigFallback(ctx, key)
+		if err != nil {
+			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+		}
+		if !exist {
+			return nil, fmt.Errorf("config not found by key: %s", key)
+		}
 	}
 
 	// update cache
@@ -101,7 +108,7 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 
 func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *entity.Config, err error) {
 	c = &entity.Config{Key: key}
-	exist, err := cr.data.DB.Context(ctx).Get(c)
+	exist, err := cr.data.SiteDB(ctx).Get(c)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -114,7 +121,7 @@ func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *e
 func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string) (err error) {
 	// check if key exists
 	oldConfig := &entity.Config{Key: key}
-	exist, err := cr.data.DB.Context(ctx).Get(oldConfig)
+	exist, err := cr.data.SiteDB(ctx).Get(oldConfig)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -123,7 +130,7 @@ func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string)
 	}
 
 	// update database
-	_, err = cr.data.DB.Context(ctx).ID(oldConfig.ID).Update(&entity.Config{Value: value})
+	_, err = cr.data.SiteDB(ctx).ID(oldConfig.ID).Update(&entity.Config{Value: value})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

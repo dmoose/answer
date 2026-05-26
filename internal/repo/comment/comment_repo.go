@@ -63,7 +63,7 @@ func (cr *commentRepo) AddComment(ctx context.Context, comment *entity.Comment) 
 	if err != nil {
 		return err
 	}
-	_, err = cr.data.DB.Context(ctx).Insert(comment)
+	_, err = cr.data.SiteInsert(ctx, comment)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -72,7 +72,7 @@ func (cr *commentRepo) AddComment(ctx context.Context, comment *entity.Comment) 
 
 // RemoveComment delete comment
 func (cr *commentRepo) RemoveComment(ctx context.Context, commentID string) (err error) {
-	session := cr.data.DB.Context(ctx).ID(commentID)
+	session := cr.data.SiteDB(ctx).ID(commentID)
 	_, err = session.Update(&entity.Comment{Status: entity.CommentStatusDeleted})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -83,7 +83,7 @@ func (cr *commentRepo) RemoveComment(ctx context.Context, commentID string) (err
 // UpdateCommentContent update comment
 func (cr *commentRepo) UpdateCommentContent(
 	ctx context.Context, commentID string, originalText string, parsedText string) (err error) {
-	_, err = cr.data.DB.Context(ctx).ID(commentID).Update(&entity.Comment{
+	_, err = cr.data.SiteDB(ctx).ID(commentID).Update(&entity.Comment{
 		OriginalText: originalText,
 		ParsedText:   parsedText,
 	})
@@ -95,7 +95,7 @@ func (cr *commentRepo) UpdateCommentContent(
 
 // UpdateCommentStatus update comment status
 func (cr *commentRepo) UpdateCommentStatus(ctx context.Context, commentID string, status int) (err error) {
-	_, err = cr.data.DB.Context(ctx).ID(commentID).Update(&entity.Comment{
+	_, err = cr.data.SiteDB(ctx).ID(commentID).Update(&entity.Comment{
 		Status: status,
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func (cr *commentRepo) GetComment(ctx context.Context, commentID string) (
 	if !uid.IsValidNumericID(commentID) {
 		return comment, false, nil
 	}
-	exist, err = cr.data.DB.Context(ctx).Where("status = ?", entity.CommentStatusAvailable).ID(commentID).Get(comment)
+	exist, err = cr.data.SiteDB(ctx).Where("status = ?", entity.CommentStatusAvailable).ID(commentID).Get(comment)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -125,7 +125,7 @@ func (cr *commentRepo) GetCommentWithoutStatus(ctx context.Context, commentID st
 	if !uid.IsValidNumericID(commentID) {
 		return comment, false, nil
 	}
-	exist, err = cr.data.DB.Context(ctx).ID(commentID).Get(comment)
+	exist, err = cr.data.SiteDB(ctx).ID(commentID).Get(comment)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -134,7 +134,7 @@ func (cr *commentRepo) GetCommentWithoutStatus(ctx context.Context, commentID st
 
 func (cr *commentRepo) GetCommentCount(ctx context.Context) (count int64, err error) {
 	list := make([]*entity.Comment, 0)
-	count, err = cr.data.DB.Context(ctx).Where("status = ?", entity.CommentStatusAvailable).FindAndCount(&list)
+	count, err = cr.data.SiteDB(ctx).Where("status = ?", entity.CommentStatusAvailable).FindAndCount(&list)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -147,7 +147,7 @@ func (cr *commentRepo) GetCommentPage(ctx context.Context, commentQuery *comment
 ) {
 	commentList = make([]*entity.Comment, 0)
 
-	session := cr.data.DB.Context(ctx)
+	session := cr.data.SiteDB(ctx)
 	session.OrderBy(commentQuery.GetOrderBy())
 	session.Where("status = ?", entity.CommentStatusAvailable)
 
@@ -161,7 +161,7 @@ func (cr *commentRepo) GetCommentPage(ctx context.Context, commentQuery *comment
 
 // RemoveAllUserComment remove all user comment
 func (cr *commentRepo) RemoveAllUserComment(ctx context.Context, userID string) (err error) {
-	session := cr.data.DB.Context(ctx).Where("user_id = ?", userID)
+	session := cr.data.SiteDB(ctx).Where("user_id = ?", userID)
 	session.Where("status != ?", entity.CommentStatusDeleted)
 	affected, err := session.Update(&entity.Comment{Status: entity.CommentStatusDeleted})
 	if err != nil {

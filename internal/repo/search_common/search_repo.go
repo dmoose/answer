@@ -223,12 +223,12 @@ func (sr *searchRepo) SearchContents(ctx context.Context, words []string, tagIDs
 	countArgs = append(countArgs, argsQ...)
 	countArgs = append(countArgs, argsA...)
 
-	res, err := sr.data.DB.Context(ctx).Query(queryArgs...)
+	res, err := sr.data.SiteDB(ctx).Query(queryArgs...)
 	if err != nil {
 		return
 	}
 
-	tr, err := sr.data.DB.Context(ctx).Query(countArgs...)
+	tr, err := sr.data.SiteDB(ctx).Query(countArgs...)
 	if len(tr) != 0 {
 		total = converter.StringToInt64(string(tr[0]["total"]))
 	}
@@ -332,12 +332,12 @@ func (sr *searchRepo) SearchQuestions(ctx context.Context, words []string, tagID
 	countArgs = append(countArgs, countSQL)
 	countArgs = append(countArgs, args...)
 
-	res, err := sr.data.DB.Context(ctx).Query(queryArgs...)
+	res, err := sr.data.SiteDB(ctx).Query(queryArgs...)
 	if err != nil {
 		return
 	}
 
-	tr, err := sr.data.DB.Context(ctx).Query(countArgs...)
+	tr, err := sr.data.SiteDB(ctx).Query(countArgs...)
 	if err != nil {
 		return
 	}
@@ -429,12 +429,12 @@ func (sr *searchRepo) SearchAnswers(ctx context.Context, words []string, tagIDs 
 	countArgs = append(countArgs, countSQL)
 	countArgs = append(countArgs, args...)
 
-	res, err := sr.data.DB.Context(ctx).Query(queryArgs...)
+	res, err := sr.data.SiteDB(ctx).Query(queryArgs...)
 	if err != nil {
 		return
 	}
 
-	tr, err := sr.data.DB.Context(ctx).Query(countArgs...)
+	tr, err := sr.data.SiteDB(ctx).Query(countArgs...)
 	if err != nil {
 		return
 	}
@@ -481,7 +481,7 @@ func (sr *searchRepo) ParseSearchPluginResult(ctx context.Context, sres []plugin
 				And(builder.Lt{"`question`.`status`": entity.QuestionStatusDeleted}).
 				And(builder.Lt{"`answer`.`status`": entity.AnswerStatusDeleted}).And(builder.Eq{"`question`.`show`": entity.QuestionShow})
 		}
-		qres, err = sr.data.DB.Context(ctx).Query(b)
+		qres, err = sr.data.SiteDB(ctx).Query(b)
 		if err != nil || len(qres) == 0 {
 			continue
 		}

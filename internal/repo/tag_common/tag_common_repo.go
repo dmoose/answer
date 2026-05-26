@@ -55,7 +55,7 @@ func NewTagCommonRepo(
 // GetTagListByIDs get tag list all
 func (tr *tagCommonRepo) GetTagListByIDs(ctx context.Context, ids []string) (tagList []*entity.Tag, err error) {
 	tagList = make([]*entity.Tag, 0)
-	session := tr.data.DB.Context(ctx).In("id", ids)
+	session := tr.data.SiteDB(ctx).In("id", ids)
 	session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	err = session.OrderBy("recommend desc,reserved desc,id desc").Find(&tagList)
 	if err != nil {
@@ -67,7 +67,7 @@ func (tr *tagCommonRepo) GetTagListByIDs(ctx context.Context, ids []string) (tag
 // GetTagBySlugName get tag by slug name
 func (tr *tagCommonRepo) GetTagBySlugName(ctx context.Context, slugName string) (tagInfo *entity.Tag, exist bool, err error) {
 	tagInfo = &entity.Tag{}
-	session := tr.data.DB.Context(ctx).Where("LOWER(slug_name) = ?", slugName)
+	session := tr.data.SiteDB(ctx).Where("LOWER(slug_name) = ?", slugName)
 	session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	exist, err = session.Get(tagInfo)
 	if err != nil {
@@ -79,7 +79,7 @@ func (tr *tagCommonRepo) GetTagBySlugName(ctx context.Context, slugName string) 
 // GetTagListByName get tag list all like name
 func (tr *tagCommonRepo) GetTagListByName(ctx context.Context, name string, recommend, reserved bool) (tagList []*entity.Tag, err error) {
 	cond := &entity.Tag{}
-	session := tr.data.DB.Context(ctx)
+	session := tr.data.SiteDB(ctx)
 	if len(name) > 0 {
 		session.Where("slug_name LIKE ? OR display_name LIKE ?", strings.ToLower(name)+"%", name+"%")
 	}
@@ -108,7 +108,7 @@ func (tr *tagCommonRepo) GetTagListByName(ctx context.Context, name string, reco
 func (tr *tagCommonRepo) GetRecommendTagList(ctx context.Context) (tagList []*entity.Tag, err error) {
 	tagList = make([]*entity.Tag, 0)
 	cond := &entity.Tag{}
-	session := tr.data.DB.Context(ctx).Where("")
+	session := tr.data.SiteDB(ctx).Where("")
 	cond.Recommend = true
 	// session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	session.Asc("slug_name")
@@ -123,7 +123,7 @@ func (tr *tagCommonRepo) GetRecommendTagList(ctx context.Context) (tagList []*en
 func (tr *tagCommonRepo) GetReservedTagList(ctx context.Context) (tagList []*entity.Tag, err error) {
 	tagList = make([]*entity.Tag, 0)
 	cond := &entity.Tag{}
-	session := tr.data.DB.Context(ctx).Where("")
+	session := tr.data.SiteDB(ctx).Where("")
 	cond.Reserved = true
 	// session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	session.Asc("slug_name")
@@ -138,7 +138,7 @@ func (tr *tagCommonRepo) GetReservedTagList(ctx context.Context) (tagList []*ent
 // GetTagListByNames get tag list all like name
 func (tr *tagCommonRepo) GetTagListByNames(ctx context.Context, names []string) (tagList []*entity.Tag, err error) {
 	tagList = make([]*entity.Tag, 0)
-	session := tr.data.DB.Context(ctx).In("slug_name", names).UseBool("recommend", "reserved")
+	session := tr.data.SiteDB(ctx).In("slug_name", names).UseBool("recommend", "reserved")
 	session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	err = session.OrderBy("recommend desc,reserved desc,id desc").Find(&tagList)
 	if err != nil {
@@ -152,7 +152,7 @@ func (tr *tagCommonRepo) GetTagByID(ctx context.Context, tagID string, includeDe
 	tag *entity.Tag, exist bool, err error,
 ) {
 	tag = &entity.Tag{}
-	session := tr.data.DB.Context(ctx).Where(builder.Eq{"id": tagID})
+	session := tr.data.SiteDB(ctx).Where(builder.Eq{"id": tagID})
 	if !includeDeleted {
 		session.Where(builder.Eq{"status": entity.TagStatusAvailable})
 	}
@@ -168,7 +168,7 @@ func (tr *tagCommonRepo) GetTagPage(ctx context.Context, page, pageSize int, tag
 	tagList []*entity.Tag, total int64, err error,
 ) {
 	tagList = make([]*entity.Tag, 0)
-	session := tr.data.DB.Context(ctx)
+	session := tr.data.SiteDB(ctx)
 
 	if len(tag.SlugName) > 0 {
 		mainTagCond := builder.And(
@@ -241,7 +241,7 @@ func (tr *tagCommonRepo) AddTagList(ctx context.Context, tagList []*entity.Tag) 
 	if len(addTags) == 0 {
 		return nil
 	}
-	_, err = tr.data.DB.Context(ctx).Insert(addTags)
+	_, err = tr.data.SiteInsert(ctx, addTags)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -250,7 +250,7 @@ func (tr *tagCommonRepo) AddTagList(ctx context.Context, tagList []*entity.Tag) 
 
 func (tr *tagCommonRepo) updateDeletedTag(ctx context.Context, tag *entity.Tag) (exist bool, err error) {
 	old := &entity.Tag{SlugName: tag.SlugName}
-	exist, err = tr.data.DB.Context(ctx).Get(old)
+	exist, err = tr.data.SiteDB(ctx).Get(old)
 	if err != nil {
 		return false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -260,7 +260,7 @@ func (tr *tagCommonRepo) updateDeletedTag(ctx context.Context, tag *entity.Tag) 
 	tag.ID = old.ID
 	tag.Status = entity.TagStatusAvailable
 	tag.RevisionID = "0"
-	if _, err = tr.data.DB.Context(ctx).ID(tag.ID).Update(tag); err != nil {
+	if _, err = tr.data.SiteDB(ctx).ID(tag.ID).Update(tag); err != nil {
 		return false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	return true, nil
@@ -269,7 +269,7 @@ func (tr *tagCommonRepo) updateDeletedTag(ctx context.Context, tag *entity.Tag) 
 // UpdateTagQuestionCount update tag question count
 func (tr *tagCommonRepo) UpdateTagQuestionCount(ctx context.Context, tagID string, questionCount int) (err error) {
 	cond := &entity.Tag{QuestionCount: questionCount}
-	_, err = tr.data.DB.Context(ctx).Where(builder.Eq{"id": tagID}).MustCols("question_count").Update(cond)
+	_, err = tr.data.SiteDB(ctx).Where(builder.Eq{"id": tagID}).MustCols("question_count").Update(cond)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -286,7 +286,7 @@ func (tr *tagCommonRepo) UpdateTagsAttribute(ctx context.Context, tags []string,
 	default:
 		return
 	}
-	session := tr.data.DB.Context(ctx).In("slug_name", tags).Cols(attribute).UseBool(attribute)
+	session := tr.data.SiteDB(ctx).In("slug_name", tags).Cols(attribute).UseBool(attribute)
 	_, err = session.Update(bean)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()

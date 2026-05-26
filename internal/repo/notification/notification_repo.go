@@ -48,7 +48,7 @@ func NewNotificationRepo(data *data.Data) notficationcommon.NotificationRepo {
 // AddNotification add notification
 func (nr *notificationRepo) AddNotification(ctx context.Context, notification *entity.Notification) (err error) {
 	notification.ObjectID = uid.DeShortID(notification.ObjectID)
-	_, err = nr.data.DB.Context(ctx).Insert(notification)
+	_, err = nr.data.SiteInsert(ctx, notification)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -59,7 +59,7 @@ func (nr *notificationRepo) UpdateNotificationContent(ctx context.Context, notif
 	now := time.Now()
 	notification.UpdatedAt = now
 	notification.ObjectID = uid.DeShortID(notification.ObjectID)
-	_, err = nr.data.DB.Context(ctx).Where("id =?", notification.ID).Cols("content", "updated_at").Update(notification)
+	_, err = nr.data.SiteDB(ctx).Where("id =?", notification.ID).Cols("content", "updated_at").Update(notification)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -69,7 +69,7 @@ func (nr *notificationRepo) UpdateNotificationContent(ctx context.Context, notif
 func (nr *notificationRepo) ClearUnRead(ctx context.Context, userID string, notificationType int) (err error) {
 	info := &entity.Notification{}
 	info.IsRead = schema.NotificationRead
-	_, err = nr.data.DB.Context(ctx).Where("user_id = ?", userID).And("type = ?", notificationType).Cols("is_read").Update(info)
+	_, err = nr.data.SiteDB(ctx).Where("user_id = ?", userID).And("type = ?", notificationType).Cols("is_read").Update(info)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -79,7 +79,7 @@ func (nr *notificationRepo) ClearUnRead(ctx context.Context, userID string, noti
 func (nr *notificationRepo) ClearIDUnRead(ctx context.Context, userID string, id string) (err error) {
 	info := &entity.Notification{}
 	info.IsRead = schema.NotificationRead
-	_, err = nr.data.DB.Context(ctx).Where("user_id = ?", userID).And("id = ?", id).Cols("is_read").Update(info)
+	_, err = nr.data.SiteDB(ctx).Where("user_id = ?", userID).And("id = ?", id).Cols("is_read").Update(info)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -88,7 +88,7 @@ func (nr *notificationRepo) ClearIDUnRead(ctx context.Context, userID string, id
 
 func (nr *notificationRepo) GetById(ctx context.Context, id string) (*entity.Notification, bool, error) {
 	info := &entity.Notification{}
-	exist, err := nr.data.DB.Context(ctx).Where("id = ? ", id).Get(info)
+	exist, err := nr.data.SiteDB(ctx).Where("id = ? ", id).Get(info)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		return info, false, err
@@ -98,7 +98,7 @@ func (nr *notificationRepo) GetById(ctx context.Context, id string) (*entity.Not
 
 func (nr *notificationRepo) GetByUserIdObjectIdTypeId(ctx context.Context, userID, objectID string, notificationType int) (*entity.Notification, bool, error) {
 	info := &entity.Notification{}
-	exist, err := nr.data.DB.Context(ctx).Where("user_id = ?", userID).And("object_id = ?", objectID).And("type = ?", notificationType).Get(info)
+	exist, err := nr.data.SiteDB(ctx).Where("user_id = ?", userID).And("object_id = ?", objectID).And("type = ?", notificationType).Get(info)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		return info, false, err
@@ -113,7 +113,7 @@ func (nr *notificationRepo) GetNotificationPage(ctx context.Context, searchCond 
 		return notificationList, 0, nil
 	}
 
-	session := nr.data.DB.Context(ctx)
+	session := nr.data.SiteDB(ctx)
 	session = session.Desc("updated_at")
 
 	cond := &entity.Notification{
@@ -131,7 +131,7 @@ func (nr *notificationRepo) GetNotificationPage(ctx context.Context, searchCond 
 }
 
 func (nr *notificationRepo) CountNotificationByUser(ctx context.Context, cond *entity.Notification) (int64, error) {
-	count, err := nr.data.DB.Context(ctx).Count(cond)
+	count, err := nr.data.SiteDB(ctx).Count(cond)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -139,7 +139,7 @@ func (nr *notificationRepo) CountNotificationByUser(ctx context.Context, cond *e
 }
 
 func (nr *notificationRepo) DeleteNotification(ctx context.Context, userID string) (err error) {
-	_, err = nr.data.DB.Context(ctx).Where("user_id = ?", userID).Delete(&entity.Notification{})
+	_, err = nr.data.SiteDB(ctx).Where("user_id = ?", userID).Delete(&entity.Notification{})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -147,7 +147,7 @@ func (nr *notificationRepo) DeleteNotification(ctx context.Context, userID strin
 }
 
 func (nr *notificationRepo) DeleteUserNotificationConfig(ctx context.Context, userID string) (err error) {
-	_, err = nr.data.DB.Context(ctx).Where("user_id = ?", userID).Delete(&entity.UserNotificationConfig{})
+	_, err = nr.data.SiteDB(ctx).Where("user_id = ?", userID).Delete(&entity.UserNotificationConfig{})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

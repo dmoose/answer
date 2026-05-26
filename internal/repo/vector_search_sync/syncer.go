@@ -49,7 +49,7 @@ func (p *PluginSyncer) GetQuestionsPage(ctx context.Context, page, pageSize int)
 	[]*plugin.VectorSearchContent, error) {
 	questions := make([]*entity.Question, 0)
 	startNum := (page - 1) * pageSize
-	err := p.data.DB.Context(ctx).Limit(pageSize, startNum).Find(&questions)
+	err := p.data.SiteDB(ctx).Limit(pageSize, startNum).Find(&questions)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (p *PluginSyncer) GetAnswersPage(ctx context.Context, page, pageSize int) (
 	[]*plugin.VectorSearchContent, error) {
 	answers := make([]*entity.Answer, 0)
 	startNum := (page - 1) * pageSize
-	err := p.data.DB.Context(ctx).Limit(pageSize, startNum).Find(&answers)
+	err := p.data.SiteDB(ctx).Limit(pageSize, startNum).Find(&answers)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (p *PluginSyncer) buildQuestionContents(ctx context.Context, questions []*e
 
 		// Get answers for this question
 		answers := make([]*entity.Answer, 0)
-		err := p.data.DB.Context(ctx).Where("question_id = ?", q.ID).Find(&answers)
+		err := p.data.SiteDB(ctx).Where("question_id = ?", q.ID).Find(&answers)
 		if err != nil {
 			log.Warnf("get answers for question %s failed: %v", q.ID, err)
 		} else {
@@ -95,7 +95,7 @@ func (p *PluginSyncer) buildQuestionContents(ctx context.Context, questions []*e
 
 				// Get comments on this answer
 				answerComments := make([]*entity.Comment, 0)
-				err := p.data.DB.Context(ctx).Where("object_id = ?", a.ID).
+				err := p.data.SiteDB(ctx).Where("object_id = ?", a.ID).
 					OrderBy("created_at ASC").Limit(50).Find(&answerComments)
 				if err != nil {
 					log.Warnf("get comments for answer %s failed: %v", a.ID, err)
@@ -113,7 +113,7 @@ func (p *PluginSyncer) buildQuestionContents(ctx context.Context, questions []*e
 
 		// Get comments on the question
 		questionComments := make([]*entity.Comment, 0)
-		err = p.data.DB.Context(ctx).Where("object_id = ?", q.ID).
+		err = p.data.SiteDB(ctx).Where("object_id = ?", q.ID).
 			OrderBy("created_at ASC").Limit(50).Find(&questionComments)
 		if err != nil {
 			log.Warnf("get comments for question %s failed: %v", q.ID, err)
@@ -145,7 +145,7 @@ func (p *PluginSyncer) buildAnswerContents(ctx context.Context, answers []*entit
 	for _, a := range answers {
 		// Get parent question for title
 		question := &entity.Question{}
-		exist, err := p.data.DB.Context(ctx).Where("id = ?", a.QuestionID).Get(question)
+		exist, err := p.data.SiteDB(ctx).Where("id = ?", a.QuestionID).Get(question)
 		if err != nil {
 			log.Errorf("get question %s failed: %v", a.QuestionID, err)
 			continue
@@ -169,7 +169,7 @@ func (p *PluginSyncer) buildAnswerContents(ctx context.Context, answers []*entit
 
 		// Get comments on this answer
 		answerComments := make([]*entity.Comment, 0)
-		err = p.data.DB.Context(ctx).Where("object_id = ?", a.ID).
+		err = p.data.SiteDB(ctx).Where("object_id = ?", a.ID).
 			OrderBy("created_at ASC").Limit(50).Find(&answerComments)
 		if err != nil {
 			log.Warnf("get comments for answer %s failed: %v", a.ID, err)

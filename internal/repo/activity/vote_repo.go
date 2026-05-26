@@ -40,6 +40,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/activity_common"
 	"github.com/segmentfault/pacman/errors"
@@ -101,7 +102,7 @@ func (vr *VoteRepo) Vote(ctx context.Context, op *schema.VoteOperationInfo) (err
 			return nil, err
 		}
 
-		sendInboxNotification, err = vr.saveActivitiesAvailable(session, op)
+		sendInboxNotification, err = vr.saveActivitiesAvailable(ctx, session, op)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +191,7 @@ func (vr *VoteRepo) GetAndSaveVoteResult(ctx context.Context, objectID, objectTy
 
 func (vr *VoteRepo) ListUserVotes(ctx context.Context, userID string,
 	page int, pageSize int, activityTypes []int) (voteList []*entity.Activity, total int64, err error) {
-	session := vr.data.DB.Context(ctx)
+	session := vr.data.SiteDB(ctx)
 	cond := builder.
 		And(
 			builder.Eq{"user_id": userID},
@@ -309,7 +310,7 @@ func (vr *VoteRepo) rollbackUserRank(ctx context.Context, session *xorm.Session,
 // If activity not exist it will be created or else will be updated
 // If this activity is already exist, set activity rank to 0
 // So after this function, the activity rank will be correct for update user rank
-func (vr *VoteRepo) saveActivitiesAvailable(session *xorm.Session, op *schema.VoteOperationInfo) (newAct bool, err error) {
+func (vr *VoteRepo) saveActivitiesAvailable(ctx context.Context, session *xorm.Session, op *schema.VoteOperationInfo) (newAct bool, err error) {
 	for _, activity := range op.Activities {
 		existsActivity := &entity.Activity{}
 		exist, err := session.
@@ -347,6 +348,7 @@ func (vr *VoteRepo) saveActivitiesAvailable(session *xorm.Session, op *schema.Vo
 				HasRank:          activity.HasRank(),
 				Cancelled:        entity.ActivityAvailable,
 			}
+			multisite.SetSiteID(ctx, &insertActivity)
 			_, err = session.Insert(&insertActivity)
 			if err != nil {
 				return false, err
@@ -392,7 +394,7 @@ func (vr *VoteRepo) getExistActivity(ctx context.Context, op *schema.VoteOperati
 	var activities []*entity.Activity
 	for _, action := range op.Activities {
 		t := &entity.Activity{}
-		exist, err := vr.data.DB.Context(ctx).
+		exist, err := vr.data.SiteDB(ctx).
 			Where(builder.Eq{"user_id": action.ActivityUserID}).
 			And(builder.Eq{"trigger_user_id": action.TriggerUserID}).
 			And(builder.Eq{"activity_type": action.ActivityType}).
@@ -427,7 +429,7 @@ func (vr *VoteRepo) countVoteDown(ctx context.Context, objectID, objectType stri
 func (vr *VoteRepo) countVote(ctx context.Context, objectID, objectType, action string) (count int64, err error) {
 	activity := &entity.Activity{}
 	activityType, _ := vr.activityRepo.GetActivityTypeByObjectType(ctx, objectType, action)
-	count, err = vr.data.DB.Context(ctx).Where(builder.Eq{"object_id": objectID}).
+	count, err = vr.data.SiteDB(ctx).Where(builder.Eq{"object_id": objectID}).
 		And(builder.Eq{"activity_type": activityType}).
 		And(builder.Eq{"cancelled": 0}).
 		Count(activity)
@@ -438,7 +440,7 @@ func (vr *VoteRepo) countVote(ctx context.Context, objectID, objectType, action 
 }
 
 func (vr *VoteRepo) updateVotes(ctx context.Context, objectID, objectType string, voteCount int) (err error) {
-	session := vr.data.DB.Context(ctx)
+	session := vr.data.SiteDB(ctx)
 	switch objectType {
 	case constant.QuestionObjectType:
 		_, err = session.ID(objectID).Cols("vote_count").Update(&entity.Question{VoteCount: voteCount})

@@ -23,6 +23,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/activity_common"
 	"github.com/apache/answer/internal/service/follow"
 	"github.com/apache/answer/pkg/obj"
@@ -96,7 +97,7 @@ func (ar *FollowRepo) Follow(ctx context.Context, objectID, userID string) error
 				})
 		} else {
 			// update existing activity with new user id and u object id
-			_, err = session.Insert(&entity.Activity{
+			act := &entity.Activity{
 				UserID:           userID,
 				ObjectID:         objectID,
 				OriginalObjectID: objectID,
@@ -104,7 +105,9 @@ func (ar *FollowRepo) Follow(ctx context.Context, objectID, userID string) error
 				Cancelled:        entity.ActivityAvailable,
 				Rank:             0,
 				HasRank:          0,
-			})
+			}
+			multisite.SetSiteID(ctx, act)
+			_, err = session.Insert(act)
 		}
 
 		if err != nil {

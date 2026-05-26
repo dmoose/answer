@@ -31,6 +31,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/activity"
 	"github.com/apache/answer/internal/service/activity_common"
@@ -75,7 +76,7 @@ func (ar *AnswerActivityRepo) SaveAcceptAnswerActivity(ctx context.Context, op *
 			return nil, err
 		}
 
-		err = ar.saveActivitiesAvailable(session, op)
+		err = ar.saveActivitiesAvailable(ctx, session, op)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +162,7 @@ func (ar *AnswerActivityRepo) acquireUserInfo(session *xorm.Session, userIDs []s
 // If activity not exist it will be created or else will be updated
 // If this activity is already exist, set activity rank to 0
 // So after this function, the activity rank will be correct for update user rank
-func (ar *AnswerActivityRepo) saveActivitiesAvailable(session *xorm.Session, op *schema.AcceptAnswerOperationInfo) (
+func (ar *AnswerActivityRepo) saveActivitiesAvailable(ctx context.Context, session *xorm.Session, op *schema.AcceptAnswerOperationInfo) (
 	err error) {
 	for _, act := range op.Activities {
 		existsActivity := &entity.Activity{}
@@ -199,6 +200,7 @@ func (ar *AnswerActivityRepo) saveActivitiesAvailable(session *xorm.Session, op 
 				HasRank:          act.HasRank(),
 				Cancelled:        entity.ActivityAvailable,
 			}
+			multisite.SetSiteID(ctx, &insertActivity)
 			_, err = session.Insert(&insertActivity)
 			if err != nil {
 				return err
@@ -283,7 +285,7 @@ func (ar *AnswerActivityRepo) getExistActivity(ctx context.Context, op *schema.A
 	var activities []*entity.Activity
 	for _, action := range op.Activities {
 		var t []*entity.Activity
-		err := ar.data.DB.Context(ctx).
+		err := ar.data.SiteDB(ctx).
 			Where(builder.Eq{"user_id": action.ActivityUserID}).
 			And(builder.Eq{"activity_type": action.ActivityType}).
 			And(builder.Eq{"object_id": op.AnswerObjectID}).

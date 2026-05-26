@@ -27,6 +27,7 @@ import (
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/badge"
 	"github.com/apache/answer/internal/service/unique"
 	"github.com/segmentfault/pacman/errors"
@@ -80,6 +81,7 @@ func (r *badgeAwardRepo) AwardBadgeForUser(ctx context.Context, badgeAward *enti
 			return nil, fmt.Errorf("badge already awarded")
 		}
 
+		multisite.SetSiteID(ctx, badgeAward)
 		_, err = session.Insert(badgeAward)
 		if err != nil {
 			return nil, err
@@ -108,7 +110,7 @@ func (r *badgeAwardRepo) CheckIsAward(ctx context.Context, badgeID, userID, awar
 }
 
 func (r *badgeAwardRepo) CountByUserIdAndBadgeId(ctx context.Context, userID string, badgeID string) (awardCount int64) {
-	awardCount, err := r.data.DB.Context(ctx).Where("user_id = ? AND badge_id = ?", userID, badgeID).Count(&entity.BadgeAward{})
+	awardCount, err := r.data.SiteDB(ctx).Where("user_id = ? AND badge_id = ?", userID, badgeID).Count(&entity.BadgeAward{})
 	if err != nil {
 		return 0
 	}
@@ -116,7 +118,7 @@ func (r *badgeAwardRepo) CountByUserIdAndBadgeId(ctx context.Context, userID str
 }
 
 func (r *badgeAwardRepo) CountByBadgeID(ctx context.Context, badgeID string) (awardCount int64, err error) {
-	awardCount, err = r.data.DB.Context(ctx).Count(&entity.BadgeAward{BadgeID: badgeID})
+	awardCount, err = r.data.SiteDB(ctx).Count(&entity.BadgeAward{BadgeID: badgeID})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -124,13 +126,13 @@ func (r *badgeAwardRepo) CountByBadgeID(ctx context.Context, badgeID string) (aw
 }
 
 func (r *badgeAwardRepo) SumUserEarnedGroupByBadgeID(ctx context.Context, userID string) (earnedCounts []*entity.BadgeEarnedCount, err error) {
-	err = r.data.DB.Context(ctx).Select("badge_id, count(`id`) AS earned_count").Where("user_id = ?", userID).GroupBy("badge_id").Find(&earnedCounts)
+	err = r.data.SiteDB(ctx).Select("badge_id, count(`id`) AS earned_count").Where("user_id = ?", userID).GroupBy("badge_id").Find(&earnedCounts)
 	return
 }
 
 // ListPagedByBadgeId list badge awards by badge id
 func (r *badgeAwardRepo) ListPagedByBadgeId(ctx context.Context, badgeID string, page int, pageSize int) (badgeAwardList []*entity.BadgeAward, total int64, err error) {
-	session := r.data.DB.Context(ctx)
+	session := r.data.SiteDB(ctx)
 	session.Where("badge_id = ?", badgeID)
 	total, err = pager.Help(page, pageSize, &badgeAwardList, &entity.BadgeAward{}, session)
 	if err != nil {
@@ -141,7 +143,7 @@ func (r *badgeAwardRepo) ListPagedByBadgeId(ctx context.Context, badgeID string,
 
 // ListPagedByBadgeIdAndUserId list badge awards by badge id and user id
 func (r *badgeAwardRepo) ListPagedByBadgeIdAndUserId(ctx context.Context, badgeID string, userID string, page int, pageSize int) (badgeAwardList []*entity.BadgeAward, total int64, err error) {
-	session := r.data.DB.Context(ctx)
+	session := r.data.SiteDB(ctx)
 	session.Where("badge_id = ? AND user_id = ?", badgeID, userID)
 	total, err = pager.Help(page, pageSize, &badgeAwardList, &entity.Question{}, session)
 	if err != nil {
@@ -153,7 +155,7 @@ func (r *badgeAwardRepo) ListPagedByBadgeIdAndUserId(ctx context.Context, badgeI
 // ListNewestEarned list newest earned badge awards
 func (r *badgeAwardRepo) ListNewestEarned(ctx context.Context, userID string, limit int) (badgeAwards []*entity.BadgeAwardRecent, err error) {
 	badgeAwards = make([]*entity.BadgeAwardRecent, 0)
-	err = r.data.DB.Context(ctx).
+	err = r.data.SiteDB(ctx).
 		Select("badge_id, max(created_at) created,count(*) earned_count").
 		Where("user_id = ? AND is_badge_deleted = ? ", userID, entity.IsBadgeNotDeleted).
 		GroupBy("badge_id").
@@ -166,7 +168,7 @@ func (r *badgeAwardRepo) ListNewestEarned(ctx context.Context, userID string, li
 func (r *badgeAwardRepo) GetByUserIdAndBadgeId(ctx context.Context, userID string, badgeID string) (
 	badgeAward *entity.BadgeAward, exists bool, err error) {
 	badgeAward = &entity.BadgeAward{}
-	exists, err = r.data.DB.Context(ctx).
+	exists, err = r.data.SiteDB(ctx).
 		Where("user_id = ? AND badge_id = ? AND is_badge_deleted = 0", userID, badgeID).Get(badgeAward)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -178,7 +180,7 @@ func (r *badgeAwardRepo) GetByUserIdAndBadgeId(ctx context.Context, userID strin
 func (r *badgeAwardRepo) GetByUserIdAndBadgeIdAndAwardKey(ctx context.Context, userID string, badgeID string, awardKey string) (
 	badgeAward *entity.BadgeAward, exists bool, err error) {
 	badgeAward = &entity.BadgeAward{}
-	exists, err = r.data.DB.Context(ctx).
+	exists, err = r.data.SiteDB(ctx).
 		Where("user_id = ? AND badge_id = ? AND award_key = ? AND is_badge_deleted = 0", userID, badgeID, awardKey).Get(badgeAward)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -188,7 +190,7 @@ func (r *badgeAwardRepo) GetByUserIdAndBadgeIdAndAwardKey(ctx context.Context, u
 
 // DeleteUserBadgeAward delete user badge award
 func (r *badgeAwardRepo) DeleteUserBadgeAward(ctx context.Context, userID string) (err error) {
-	_, err = r.data.DB.Context(ctx).Where("user_id = ?", userID).Delete(&entity.BadgeAward{})
+	_, err = r.data.SiteDB(ctx).Where("user_id = ?", userID).Delete(&entity.BadgeAward{})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

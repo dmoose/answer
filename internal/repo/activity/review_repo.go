@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/pkg/converter"
 	"xorm.io/builder"
@@ -112,6 +113,7 @@ func (ar *ReviewActivityRepo) Review(ctx context.Context, act *schema.PassReview
 			return nil, err
 		}
 
+		multisite.SetSiteID(ctx, addActivity)
 		_, err = session.Insert(addActivity)
 		if err != nil {
 			return nil, err

@@ -45,7 +45,7 @@ func NewFileRecordRepo(data *data.Data) file_record.FileRecordRepo {
 
 // AddFileRecord add file record
 func (fr *fileRecordRepo) AddFileRecord(ctx context.Context, fileRecord *entity.FileRecord) (err error) {
-	_, err = fr.data.DB.Context(ctx).Insert(fileRecord)
+	_, err = fr.data.SiteInsert(ctx, fileRecord)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -57,7 +57,7 @@ func (fr *fileRecordRepo) GetFileRecordPage(ctx context.Context, page, pageSize 
 	fileRecordList []*entity.FileRecord, total int64, err error) {
 	fileRecordList = make([]*entity.FileRecord, 0)
 
-	session := fr.data.DB.Context(ctx)
+	session := fr.data.SiteDB(ctx)
 	total, err = pager.Help(page, pageSize, &fileRecordList, cond, session)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -67,7 +67,7 @@ func (fr *fileRecordRepo) GetFileRecordPage(ctx context.Context, page, pageSize 
 
 // DeleteFileRecord delete file record
 func (fr *fileRecordRepo) DeleteFileRecord(ctx context.Context, id int) (err error) {
-	_, err = fr.data.DB.Context(ctx).ID(id).Cols("status").Update(&entity.FileRecord{Status: entity.FileRecordStatusDeleted})
+	_, err = fr.data.SiteDB(ctx).ID(id).Cols("status").Update(&entity.FileRecord{Status: entity.FileRecordStatusDeleted})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -76,7 +76,7 @@ func (fr *fileRecordRepo) DeleteFileRecord(ctx context.Context, id int) (err err
 
 // UpdateFileRecord update file record
 func (fr *fileRecordRepo) UpdateFileRecord(ctx context.Context, fileRecord *entity.FileRecord) (err error) {
-	_, err = fr.data.DB.Context(ctx).ID(fileRecord.ID).Update(fileRecord)
+	_, err = fr.data.SiteDB(ctx).ID(fileRecord.ID).Update(fileRecord)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -86,7 +86,7 @@ func (fr *fileRecordRepo) UpdateFileRecord(ctx context.Context, fileRecord *enti
 // GetFileRecordByURL gets a file record by its url
 func (fr *fileRecordRepo) GetFileRecordByURL(ctx context.Context, fileURL string) (record *entity.FileRecord, err error) {
 	record = &entity.FileRecord{}
-	session := fr.data.DB.Context(ctx)
+	session := fr.data.SiteDB(ctx)
 	exists, err := session.Where("file_url = ? AND status = ?", fileURL, entity.FileRecordStatusAvailable).Get(record)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()

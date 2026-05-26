@@ -53,7 +53,7 @@ func (rr *reportRepo) AddReport(ctx context.Context, report *entity.Report) (err
 	if err != nil {
 		return err
 	}
-	_, err = rr.data.DB.Context(ctx).Insert(report)
+	_, err = rr.data.SiteInsert(ctx, report)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -65,7 +65,7 @@ func (rr *reportRepo) GetReportListPage(ctx context.Context, dto *schema.GetRepo
 	reports []*entity.Report, total int64, err error) {
 	cond := &entity.Report{}
 	cond.Status = dto.Status
-	session := rr.data.DB.Context(ctx).Desc("updated_at")
+	session := rr.data.SiteDB(ctx).Desc("updated_at")
 	total, err = pager.Help(dto.Page, dto.PageSize, &reports, cond, session)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -76,7 +76,7 @@ func (rr *reportRepo) GetReportListPage(ctx context.Context, dto *schema.GetRepo
 // GetByID get report by ID
 func (rr *reportRepo) GetByID(ctx context.Context, id string) (report *entity.Report, exist bool, err error) {
 	report = &entity.Report{}
-	exist, err = rr.data.DB.Context(ctx).ID(id).Get(report)
+	exist, err = rr.data.SiteDB(ctx).ID(id).Get(report)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -85,7 +85,7 @@ func (rr *reportRepo) GetByID(ctx context.Context, id string) (report *entity.Re
 
 // UpdateStatus update report status by ID
 func (rr *reportRepo) UpdateStatus(ctx context.Context, id string, status int) (err error) {
-	_, err = rr.data.DB.Context(ctx).ID(id).Update(&entity.Report{Status: status})
+	_, err = rr.data.SiteDB(ctx).ID(id).Update(&entity.Report{Status: status})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -94,7 +94,7 @@ func (rr *reportRepo) UpdateStatus(ctx context.Context, id string, status int) (
 
 func (rr *reportRepo) GetReportCount(ctx context.Context) (count int64, err error) {
 	list := make([]*entity.Report, 0)
-	count, err = rr.data.DB.Context(ctx).Where("status =?", entity.ReportStatusPending).FindAndCount(&list)
+	count, err = rr.data.SiteDB(ctx).Where("status =?", entity.ReportStatusPending).FindAndCount(&list)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

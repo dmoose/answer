@@ -27,6 +27,7 @@ import (
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/revision"
 	"github.com/apache/answer/internal/service/unique"
 	"github.com/apache/answer/pkg/converter"
@@ -66,6 +67,7 @@ func (rr *revisionRepo) AddRevision(ctx context.Context, revision *entity.Revisi
 	}
 	_, err = rr.data.DB.Transaction(func(session *xorm.Session) (any, error) {
 		session = session.Context(ctx)
+		multisite.SetSiteID(ctx, revision)
 		_, err = session.Insert(revision)
 		if err != nil {
 			_ = session.Rollback()
@@ -110,7 +112,7 @@ func (rr *revisionRepo) UpdateStatus(ctx context.Context, id string, status int,
 	data.ID = id
 	data.Status = status
 	data.ReviewUserID = converter.StringToInt64(reviewUserID)
-	_, err = rr.data.DB.Context(ctx).Where("id =?", id).Cols("status", "review_user_id").Update(&data)
+	_, err = rr.data.SiteDB(ctx).Where("id =?", id).Cols("status", "review_user_id").Update(&data)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -122,7 +124,7 @@ func (rr *revisionRepo) GetRevision(ctx context.Context, id string) (
 	revision *entity.Revision, exist bool, err error,
 ) {
 	revision = &entity.Revision{}
-	exist, err = rr.data.DB.Context(ctx).ID(id).Get(revision)
+	exist, err = rr.data.SiteDB(ctx).ID(id).Get(revision)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -133,7 +135,7 @@ func (rr *revisionRepo) GetRevision(ctx context.Context, id string) (
 func (rr *revisionRepo) GetRevisionByID(ctx context.Context, revisionID string) (
 	revision *entity.Revision, exist bool, err error) {
 	revision = &entity.Revision{}
-	exist, err = rr.data.DB.Context(ctx).Where("id = ?", revisionID).Get(revision)
+	exist, err = rr.data.SiteDB(ctx).Where("id = ?", revisionID).Get(revision)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -143,7 +145,7 @@ func (rr *revisionRepo) GetRevisionByID(ctx context.Context, revisionID string) 
 func (rr *revisionRepo) ExistUnreviewedByObjectID(ctx context.Context, objectID string) (
 	revision *entity.Revision, exist bool, err error) {
 	revision = &entity.Revision{}
-	exist, err = rr.data.DB.Context(ctx).Where("object_id = ?", objectID).And("status = ?", entity.RevisionUnreviewedStatus).Get(revision)
+	exist, err = rr.data.SiteDB(ctx).Where("object_id = ?", objectID).And("status = ?", entity.RevisionUnreviewedStatus).Get(revision)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -155,7 +157,7 @@ func (rr *revisionRepo) GetLastRevisionByObjectID(ctx context.Context, objectID 
 	revision *entity.Revision, exist bool, err error,
 ) {
 	revision = &entity.Revision{}
-	exist, err = rr.data.DB.Context(ctx).Where("object_id = ?", objectID).Desc("created_at").Get(revision)
+	exist, err = rr.data.SiteDB(ctx).Where("object_id = ?", objectID).Desc("created_at").Get(revision)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -165,7 +167,7 @@ func (rr *revisionRepo) GetLastRevisionByObjectID(ctx context.Context, objectID 
 // GetLastRevisionByFileURL get object's last revision by file url
 func (rr *revisionRepo) GetLastRevisionByFileURL(ctx context.Context, fileURL string) (revision *entity.Revision, exist bool, err error) {
 	revision = &entity.Revision{}
-	exist, err = rr.data.DB.Context(ctx).Where("content LIKE ?", "%"+fileURL+"%").Desc("created_at").Get(revision)
+	exist, err = rr.data.SiteDB(ctx).Where("content LIKE ?", "%"+fileURL+"%").Desc("created_at").Get(revision)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -175,7 +177,7 @@ func (rr *revisionRepo) GetLastRevisionByFileURL(ctx context.Context, fileURL st
 // GetRevisionList get revision list all
 func (rr *revisionRepo) GetRevisionList(ctx context.Context, revision *entity.Revision) (revisionList []entity.Revision, err error) {
 	revisionList = []entity.Revision{}
-	err = rr.data.DB.Context(ctx).Where(builder.Eq{
+	err = rr.data.SiteDB(ctx).Where(builder.Eq{
 		"object_id": revision.ObjectID,
 	}).OrderBy("created_at DESC").Find(&revisionList)
 	if err != nil {
@@ -205,7 +207,7 @@ func (rr *revisionRepo) GetUnreviewedRevisionPage(ctx context.Context, page int,
 	if len(objectTypeList) == 0 {
 		return revisionList, 0, nil
 	}
-	session := rr.data.DB.Context(ctx)
+	session := rr.data.SiteDB(ctx)
 	session = session.And("status = ?", entity.RevisionUnreviewedStatus)
 	session = session.In("object_type", objectTypeList)
 	session = session.OrderBy("created_at asc")
@@ -222,7 +224,7 @@ func (rr *revisionRepo) CountUnreviewedRevision(ctx context.Context, objectTypeL
 	if len(objectTypeList) == 0 {
 		return 0, nil
 	}
-	session := rr.data.DB.Context(ctx)
+	session := rr.data.SiteDB(ctx)
 	session = session.And("status = ?", entity.RevisionUnreviewedStatus)
 	session = session.In("object_type", objectTypeList)
 	count, err = session.Count(&entity.Revision{})

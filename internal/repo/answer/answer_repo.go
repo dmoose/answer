@@ -71,7 +71,7 @@ func (ar *answerRepo) AddAnswer(ctx context.Context, answer *entity.Answer) (err
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	answer.ID = ID
-	_, err = ar.data.DB.Context(ctx).Insert(answer)
+	_, err = ar.data.SiteInsert(ctx, answer)
 
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -87,7 +87,7 @@ func (ar *answerRepo) AddAnswer(ctx context.Context, answer *entity.Answer) (err
 // RemoveAnswer delete answer
 func (ar *answerRepo) RemoveAnswer(ctx context.Context, answerID string) (err error) {
 	answerID = uid.DeShortID(answerID)
-	_, err = ar.data.DB.Context(ctx).ID(answerID).Cols("status").Update(&entity.Answer{
+	_, err = ar.data.SiteDB(ctx).ID(answerID).Cols("status").Update(&entity.Answer{
 		Status: entity.AnswerStatusDeleted,
 	})
 	if err != nil {
@@ -100,7 +100,7 @@ func (ar *answerRepo) RemoveAnswer(ctx context.Context, answerID string) (err er
 // RecoverAnswer recover answer
 func (ar *answerRepo) RecoverAnswer(ctx context.Context, answerID string) (err error) {
 	answerID = uid.DeShortID(answerID)
-	_, err = ar.data.DB.Context(ctx).ID(answerID).Cols("status").Update(&entity.Answer{
+	_, err = ar.data.SiteDB(ctx).ID(answerID).Cols("status").Update(&entity.Answer{
 		Status: entity.AnswerStatusAvailable,
 	})
 	if err != nil {
@@ -114,7 +114,7 @@ func (ar *answerRepo) RecoverAnswer(ctx context.Context, answerID string) (err e
 func (ar *answerRepo) RemoveAllUserAnswer(ctx context.Context, userID string) (err error) {
 	// find all answer id that need to be deleted
 	answerIDs := make([]string, 0)
-	session := ar.data.DB.Context(ctx).Where("user_id = ?", userID)
+	session := ar.data.SiteDB(ctx).Where("user_id = ?", userID)
 	session.Where("status != ?", entity.AnswerStatusDeleted)
 	err = session.Select("id").Table("answer").Find(&answerIDs)
 	if err != nil {
@@ -127,7 +127,7 @@ func (ar *answerRepo) RemoveAllUserAnswer(ctx context.Context, userID string) (e
 	log.Infof("find %d answers need to be deleted for user %s", len(answerIDs), userID)
 
 	// delete all question
-	session = ar.data.DB.Context(ctx).Where("user_id = ?", userID)
+	session = ar.data.SiteDB(ctx).Where("user_id = ?", userID)
 	session.Where("status != ?", entity.AnswerStatusDeleted)
 	_, err = session.Cols("status", "updated_at").Update(&entity.Answer{
 		UpdatedAt: time.Now(),
@@ -148,7 +148,7 @@ func (ar *answerRepo) RemoveAllUserAnswer(ctx context.Context, userID string) (e
 func (ar *answerRepo) UpdateAnswer(ctx context.Context, answer *entity.Answer, cols []string) (err error) {
 	answer.ID = uid.DeShortID(answer.ID)
 	answer.QuestionID = uid.DeShortID(answer.QuestionID)
-	_, err = ar.data.DB.Context(ctx).ID(answer.ID).Cols(cols...).Update(answer)
+	_, err = ar.data.SiteDB(ctx).ID(answer.ID).Cols(cols...).Update(answer)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -158,7 +158,7 @@ func (ar *answerRepo) UpdateAnswer(ctx context.Context, answer *entity.Answer, c
 
 func (ar *answerRepo) UpdateAnswerStatus(ctx context.Context, answerID string, status int) (err error) {
 	answerID = uid.DeShortID(answerID)
-	_, err = ar.data.DB.Context(ctx).ID(answerID).Cols("status").Update(&entity.Answer{Status: status})
+	_, err = ar.data.SiteDB(ctx).ID(answerID).Cols("status").Update(&entity.Answer{Status: status})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -172,7 +172,7 @@ func (ar *answerRepo) GetAnswer(ctx context.Context, id string) (
 ) {
 	id = uid.DeShortID(id)
 	answer = &entity.Answer{}
-	exist, err = ar.data.DB.Context(ctx).ID(id).Get(answer)
+	exist, err = ar.data.SiteDB(ctx).ID(id).Get(answer)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -186,7 +186,7 @@ func (ar *answerRepo) GetAnswer(ctx context.Context, id string) (
 // GetAnswerCount count answer
 func (ar *answerRepo) GetAnswerCount(ctx context.Context) (count int64, err error) {
 	var resp = new(entity.Answer)
-	count, err = ar.data.DB.Context(ctx).Where("status = ?", entity.AnswerStatusAvailable).Count(resp)
+	count, err = ar.data.SiteDB(ctx).Where("status = ?", entity.AnswerStatusAvailable).Count(resp)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -198,7 +198,7 @@ func (ar *answerRepo) GetAnswerList(ctx context.Context, answer *entity.Answer) 
 	answerList = make([]*entity.Answer, 0)
 	answer.ID = uid.DeShortID(answer.ID)
 	answer.QuestionID = uid.DeShortID(answer.QuestionID)
-	err = ar.data.DB.Context(ctx).Find(&answerList, answer)
+	err = ar.data.SiteDB(ctx).Find(&answerList, answer)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -216,7 +216,7 @@ func (ar *answerRepo) GetAnswerPage(ctx context.Context, page, pageSize int, ans
 	answer.ID = uid.DeShortID(answer.ID)
 	answer.QuestionID = uid.DeShortID(answer.QuestionID)
 	answerList = make([]*entity.Answer, 0)
-	total, err = pager.Help(page, pageSize, &answerList, answer, ar.data.DB.Context(ctx))
+	total, err = pager.Help(page, pageSize, &answerList, answer, ar.data.SiteDB(ctx))
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -235,7 +235,7 @@ func (ar *answerRepo) UpdateAcceptedStatus(ctx context.Context, acceptedAnswerID
 	questionID = uid.DeShortID(questionID)
 
 	// update all this question's answer accepted status to false
-	_, err := ar.data.DB.Context(ctx).Where("question_id = ?", questionID).Cols("adopted").Update(&entity.Answer{
+	_, err := ar.data.SiteDB(ctx).Where("question_id = ?", questionID).Cols("adopted").Update(&entity.Answer{
 		Accepted: schema.AnswerAcceptedFailed,
 	})
 	if err != nil {
@@ -244,7 +244,7 @@ func (ar *answerRepo) UpdateAcceptedStatus(ctx context.Context, acceptedAnswerID
 
 	// if acceptedAnswerID is not empty, update accepted status to true
 	if len(acceptedAnswerID) > 0 && acceptedAnswerID != "0" {
-		_, err = ar.data.DB.Context(ctx).Where("id = ?", acceptedAnswerID).Cols("adopted").Update(&entity.Answer{
+		_, err = ar.data.SiteDB(ctx).Where("id = ?", acceptedAnswerID).Cols("adopted").Update(&entity.Answer{
 			Accepted: schema.AnswerAcceptedEnable,
 		})
 		if err != nil {
@@ -259,7 +259,7 @@ func (ar *answerRepo) UpdateAcceptedStatus(ctx context.Context, acceptedAnswerID
 func (ar *answerRepo) GetByID(ctx context.Context, answerID string) (*entity.Answer, bool, error) {
 	var resp entity.Answer
 	answerID = uid.DeShortID(answerID)
-	has, err := ar.data.DB.Context(ctx).ID(answerID).Get(&resp)
+	has, err := ar.data.SiteDB(ctx).ID(answerID).Get(&resp)
 	if err != nil {
 		return &resp, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -275,7 +275,7 @@ func (ar *answerRepo) GetByIDs(ctx context.Context, answerIDs ...string) ([]*ent
 		answerIDs[idx] = uid.DeShortID(answerID)
 	}
 	var resp = make([]*entity.Answer, 0)
-	err := ar.data.DB.Context(ctx).In("id", answerIDs).Find(&resp)
+	err := ar.data.SiteDB(ctx).In("id", answerIDs).Find(&resp)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -291,7 +291,7 @@ func (ar *answerRepo) GetByIDs(ctx context.Context, answerIDs ...string) ([]*ent
 func (ar *answerRepo) GetCountByQuestionID(ctx context.Context, questionID string) (int64, error) {
 	questionID = uid.DeShortID(questionID)
 	var resp = new(entity.Answer)
-	count, err := ar.data.DB.Context(ctx).Where("question_id =? and  status = ?", questionID, entity.AnswerStatusAvailable).Count(resp)
+	count, err := ar.data.SiteDB(ctx).Where("question_id =? and  status = ?", questionID, entity.AnswerStatusAvailable).Count(resp)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -300,7 +300,7 @@ func (ar *answerRepo) GetCountByQuestionID(ctx context.Context, questionID strin
 
 func (ar *answerRepo) GetCountByUserID(ctx context.Context, userID string) (int64, error) {
 	var resp = new(entity.Answer)
-	count, err := ar.data.DB.Context(ctx).Where(" user_id = ?  and  status = ?", userID, entity.AnswerStatusAvailable).Count(resp)
+	count, err := ar.data.SiteDB(ctx).Where(" user_id = ?  and  status = ?", userID, entity.AnswerStatusAvailable).Count(resp)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -311,7 +311,7 @@ func (ar *answerRepo) GetIDsByUserIDAndQuestionID(ctx context.Context, userID st
 	questionID = uid.DeShortID(questionID)
 	var ids []string
 	resp := make([]string, 0)
-	err := ar.data.DB.Context(ctx).Table(entity.Answer{}.TableName()).Where("question_id =? and  user_id = ? and status = ?", questionID, userID, entity.AnswerStatusAvailable).OrderBy("created_at ASC").Cols("id").Find(&ids)
+	err := ar.data.SiteDB(ctx).Table(entity.Answer{}.TableName()).Where("question_id =? and  user_id = ? and status = ?", questionID, userID, entity.AnswerStatusAvailable).OrderBy("created_at ASC").Cols("id").Find(&ids)
 	if err != nil {
 		return resp, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -343,7 +343,7 @@ func (ar *answerRepo) SearchList(ctx context.Context, search *entity.AnswerSearc
 		search.PageSize = constant.DefaultPageSize
 	}
 	offset := search.Page * search.PageSize
-	session := ar.data.DB.Context(ctx)
+	session := ar.data.SiteDB(ctx)
 
 	if search.QuestionID != "" {
 		session = session.And("question_id = ?", search.QuestionID)
@@ -389,7 +389,7 @@ func (ar *answerRepo) GetPersonalAnswerPage(ctx context.Context, req *entity.Per
 	cond := &entity.Answer{
 		UserID: req.UserID,
 	}
-	session := ar.data.DB.Context(ctx)
+	session := ar.data.SiteDB(ctx)
 	switch req.Order {
 	case entity.AnswerSearchOrderByTime:
 		session = session.OrderBy("created_at desc")
@@ -422,7 +422,7 @@ func (ar *answerRepo) GetPersonalAnswerPage(ctx context.Context, req *entity.Per
 func (ar *answerRepo) AdminSearchList(ctx context.Context, req *schema.AdminAnswerPageReq) (
 	resp []*entity.Answer, total int64, err error) {
 	cond := &entity.Answer{}
-	session := ar.data.DB.Context(ctx)
+	session := ar.data.SiteDB(ctx)
 	if len(req.QuestionID) == 0 && len(req.AnswerID) == 0 {
 		session.Join("INNER", "question", "answer.question_id = question.id")
 		if len(req.QuestionTitle) > 0 {
@@ -452,7 +452,7 @@ func (ar *answerRepo) AdminSearchList(ctx context.Context, req *schema.AdminAnsw
 func (ar *answerRepo) SumVotesByQuestionID(ctx context.Context, questionID string) (float64, error) {
 	questionID = uid.DeShortID(questionID)
 	var resp entity.Answer
-	count, err := ar.data.DB.Context(ctx).Where("question_id = ? and status = ?", questionID, entity.AnswerStatusAvailable).Sum(&resp, "vote_count")
+	count, err := ar.data.SiteDB(ctx).Where("question_id = ? and status = ?", questionID, entity.AnswerStatusAvailable).Sum(&resp, "vote_count")
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -485,7 +485,7 @@ func (ar *answerRepo) updateSearch(ctx context.Context, answerID string) (err er
 	var (
 		question = new(entity.Question)
 	)
-	exist, err = ar.data.DB.Context(ctx).Where("id = ?", answer.QuestionID).Get(&question)
+	exist, err = ar.data.SiteDB(ctx).Where("id = ?", answer.QuestionID).Get(&question)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -498,7 +498,7 @@ func (ar *answerRepo) updateSearch(ctx context.Context, answerID string) (err er
 		tagListList = make([]*entity.TagRel, 0)
 		tags        = make([]string, 0)
 	)
-	st := ar.data.DB.Context(ctx).Where("object_id = ?", uid.DeShortID(question.ID))
+	st := ar.data.SiteDB(ctx).Where("object_id = ?", uid.DeShortID(question.ID))
 	st.Where("status = ?", entity.TagRelStatusAvailable)
 	err = st.Find(&tagListList)
 	if err != nil {
@@ -532,7 +532,7 @@ func (ar *answerRepo) updateSearch(ctx context.Context, answerID string) (err er
 func (ar *answerRepo) DeletePermanentlyAnswers(ctx context.Context) error {
 	// get all deleted answers ids
 	ids := make([]string, 0)
-	err := ar.data.DB.Context(ctx).Select("id").Table(new(entity.Answer).TableName()).
+	err := ar.data.SiteDB(ctx).Select("id").Table(new(entity.Answer).TableName()).
 		Where("status = ?", entity.AnswerStatusDeleted).Find(&ids)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -542,12 +542,12 @@ func (ar *answerRepo) DeletePermanentlyAnswers(ctx context.Context) error {
 	}
 
 	// delete all revisions permanently
-	_, err = ar.data.DB.Context(ctx).In("object_id", ids).Delete(&entity.Revision{})
+	_, err = ar.data.SiteDB(ctx).In("object_id", ids).Delete(&entity.Revision{})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 
-	_, err = ar.data.DB.Context(ctx).Where("status = ?", entity.AnswerStatusDeleted).Delete(&entity.Answer{})
+	_, err = ar.data.SiteDB(ctx).Where("status = ?", entity.AnswerStatusDeleted).Delete(&entity.Answer{})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

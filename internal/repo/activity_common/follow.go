@@ -26,6 +26,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/activity_common"
 	"github.com/apache/answer/internal/service/unique"
 	"github.com/apache/answer/pkg/obj"
@@ -64,19 +65,19 @@ func (ar *FollowRepo) GetFollowAmount(ctx context.Context, objectID string) (fol
 	switch objectType {
 	case "question":
 		model := &entity.Question{}
-		_, err = ar.data.DB.Context(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
+		_, err = ar.data.SiteDB(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
 		if err == nil {
 			follows = model.FollowCount
 		}
 	case "user":
 		model := &entity.User{}
-		_, err = ar.data.DB.Context(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
+		_, err = ar.data.SiteDB(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
 		if err == nil {
 			follows = model.FollowCount
 		}
 	case "tag":
 		model := &entity.Tag{}
-		_, err = ar.data.DB.Context(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
+		_, err = ar.data.SiteDB(ctx).Where("id = ?", objectID).Cols("`follow_count`").Get(model)
 		if err == nil {
 			follows = model.FollowCount
 		}
@@ -103,7 +104,7 @@ func (ar *FollowRepo) GetFollowUserIDs(ctx context.Context, objectID string) (us
 	}
 
 	userIDs = make([]string, 0)
-	session := ar.data.DB.Context(ctx).Select("user_id")
+	session := ar.data.SiteDB(ctx).Select("user_id")
 	session.Table(entity.Activity{}.TableName())
 	session.Where("object_id = ?", objectID)
 	session.Where("activity_type = ?", activityType)
@@ -122,7 +123,7 @@ func (ar *FollowRepo) GetFollowIDs(ctx context.Context, userID, objectKey string
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
-	session := ar.data.DB.Context(ctx).Select("object_id")
+	session := ar.data.SiteDB(ctx).Select("object_id")
 	session.Table(entity.Activity{}.TableName())
 	session.Where("user_id = ? AND activity_type = ?", userID, activityType)
 	session.Where("cancelled = 0")
@@ -146,7 +147,7 @@ func (ar *FollowRepo) IsFollowed(ctx context.Context, userID, objectID string) (
 	}
 
 	at := &entity.Activity{}
-	has, err := ar.data.DB.Context(ctx).Where("user_id = ? AND object_id = ? AND activity_type = ?", userID, objectID, activityType).Get(at)
+	has, err := ar.data.SiteDB(ctx).Where("user_id = ? AND object_id = ? AND activity_type = ?", userID, objectID, activityType).Get(at)
 	if err != nil {
 		return false, err
 	}
@@ -254,6 +255,7 @@ func (ar *FollowRepo) MigrateFollowers(ctx context.Context, sourceObjectID, targ
 				UpdatedAt:        time.Now(),
 				Cancelled:        entity.ActivityAvailable,
 			}
+			multisite.SetSiteID(ctx, activity)
 			if _, err = session.Insert(activity); err != nil {
 				return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 			}

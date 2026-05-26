@@ -25,6 +25,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	metacommon "github.com/apache/answer/internal/service/meta_common"
 	"github.com/segmentfault/pacman/errors"
 	"xorm.io/builder"
@@ -45,7 +46,7 @@ func NewMetaRepo(data *data.Data) metacommon.MetaRepo {
 
 // AddMeta add meta
 func (mr *metaRepo) AddMeta(ctx context.Context, meta *entity.Meta) (err error) {
-	_, err = mr.data.DB.Context(ctx).Insert(meta)
+	_, err = mr.data.SiteInsert(ctx, meta)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -54,7 +55,7 @@ func (mr *metaRepo) AddMeta(ctx context.Context, meta *entity.Meta) (err error) 
 
 // RemoveMeta delete meta
 func (mr *metaRepo) RemoveMeta(ctx context.Context, id int) (err error) {
-	_, err = mr.data.DB.Context(ctx).ID(id).Delete(&entity.Meta{})
+	_, err = mr.data.SiteDB(ctx).ID(id).Delete(&entity.Meta{})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -63,7 +64,7 @@ func (mr *metaRepo) RemoveMeta(ctx context.Context, id int) (err error) {
 
 // UpdateMeta update meta
 func (mr *metaRepo) UpdateMeta(ctx context.Context, meta *entity.Meta) (err error) {
-	_, err = mr.data.DB.Context(ctx).ID(meta.ID).Update(meta)
+	_, err = mr.data.SiteDB(ctx).ID(meta.ID).Update(meta)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -91,6 +92,7 @@ func (mr *metaRepo) AddOrUpdateMetaByObjectIdAndKey(ctx context.Context, objectI
 		if exist {
 			_, err = session.ID(metaEntity.ID).Update(meta)
 		} else {
+			multisite.SetSiteID(ctx, meta)
 			_, err = session.Insert(meta)
 		}
 
@@ -103,7 +105,7 @@ func (mr *metaRepo) AddOrUpdateMetaByObjectIdAndKey(ctx context.Context, objectI
 func (mr *metaRepo) GetMetaByObjectIdAndKey(ctx context.Context, objectID, key string) (
 	meta *entity.Meta, exist bool, err error) {
 	meta = &entity.Meta{}
-	exist, err = mr.data.DB.Context(ctx).Where(builder.Eq{"object_id": objectID}.And(builder.Eq{"`key`": key})).Desc("created_at").Get(meta)
+	exist, err = mr.data.SiteDB(ctx).Where(builder.Eq{"object_id": objectID}.And(builder.Eq{"`key`": key})).Desc("created_at").Get(meta)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -113,7 +115,7 @@ func (mr *metaRepo) GetMetaByObjectIdAndKey(ctx context.Context, objectID, key s
 // GetMetaList get meta list all
 func (mr *metaRepo) GetMetaList(ctx context.Context, meta *entity.Meta) (metaList []*entity.Meta, err error) {
 	metaList = make([]*entity.Meta, 0)
-	err = mr.data.DB.Context(ctx).Find(&metaList, meta)
+	err = mr.data.SiteDB(ctx).Find(&metaList, meta)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

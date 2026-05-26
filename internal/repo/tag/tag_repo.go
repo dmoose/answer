@@ -51,7 +51,7 @@ func NewTagRepo(
 
 // RemoveTag delete tag
 func (tr *tagRepo) RemoveTag(ctx context.Context, tagID string) (err error) {
-	session := tr.data.DB.Context(ctx).Where(builder.Eq{"id": tagID})
+	session := tr.data.SiteDB(ctx).Where(builder.Eq{"id": tagID})
 	_, err = session.Update(&entity.Tag{Status: entity.TagStatusDeleted})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -61,7 +61,7 @@ func (tr *tagRepo) RemoveTag(ctx context.Context, tagID string) (err error) {
 
 // UpdateTag update tag
 func (tr *tagRepo) UpdateTag(ctx context.Context, tag *entity.Tag) (err error) {
-	_, err = tr.data.DB.Context(ctx).Where(builder.Eq{"id": tag.ID}).Update(tag)
+	_, err = tr.data.SiteDB(ctx).Where(builder.Eq{"id": tag.ID}).Update(tag)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -70,7 +70,7 @@ func (tr *tagRepo) UpdateTag(ctx context.Context, tag *entity.Tag) (err error) {
 
 // RecoverTag recover deleted tag
 func (tr *tagRepo) RecoverTag(ctx context.Context, tagID string) (err error) {
-	_, err = tr.data.DB.Context(ctx).ID(tagID).Update(&entity.Tag{Status: entity.TagStatusAvailable})
+	_, err = tr.data.SiteDB(ctx).ID(tagID).Update(&entity.Tag{Status: entity.TagStatusAvailable})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -84,7 +84,7 @@ func (tr *tagRepo) MustGetTagByNameOrID(ctx context.Context, tagID, slugName str
 		return nil, false, nil
 	}
 	tag = &entity.Tag{}
-	session := tr.data.DB.Context(ctx)
+	session := tr.data.SiteDB(ctx)
 	if len(tagID) > 0 {
 		session.ID(tagID)
 	}
@@ -103,7 +103,7 @@ func (tr *tagRepo) UpdateTagSynonym(ctx context.Context, tagSlugNameList []strin
 	mainTagSlugName string,
 ) (err error) {
 	bean := &entity.Tag{MainTagID: mainTagID, MainTagSlugName: mainTagSlugName}
-	session := tr.data.DB.Context(ctx).In("slug_name", tagSlugNameList).MustCols("main_tag_id", "main_tag_slug_name")
+	session := tr.data.SiteDB(ctx).In("slug_name", tagSlugNameList).MustCols("main_tag_id", "main_tag_slug_name")
 	_, err = session.Update(bean)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -112,7 +112,7 @@ func (tr *tagRepo) UpdateTagSynonym(ctx context.Context, tagSlugNameList []strin
 }
 
 func (tr *tagRepo) GetTagSynonymCount(ctx context.Context, tagID string) (count int64, err error) {
-	count, err = tr.data.DB.Context(ctx).Count(&entity.Tag{MainTagID: converter.StringToInt64(tagID), Status: entity.TagStatusAvailable})
+	count, err = tr.data.SiteDB(ctx).Count(&entity.Tag{MainTagID: converter.StringToInt64(tagID), Status: entity.TagStatusAvailable})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -120,7 +120,7 @@ func (tr *tagRepo) GetTagSynonymCount(ctx context.Context, tagID string) (count 
 }
 
 func (tr *tagRepo) GetIDsByMainTagId(ctx context.Context, mainTagID string) (tagIDs []string, err error) {
-	session := tr.data.DB.Context(ctx).Table(entity.Tag{}.TableName()).Where(builder.Eq{"status": entity.TagStatusAvailable, "main_tag_id": converter.StringToInt64(mainTagID)}).Cols("id")
+	session := tr.data.SiteDB(ctx).Table(entity.Tag{}.TableName()).Where(builder.Eq{"status": entity.TagStatusAvailable, "main_tag_id": converter.StringToInt64(mainTagID)}).Cols("id")
 	err = session.Find(&tagIDs)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -131,7 +131,7 @@ func (tr *tagRepo) GetIDsByMainTagId(ctx context.Context, mainTagID string) (tag
 // GetTagList get tag list all
 func (tr *tagRepo) GetTagList(ctx context.Context, tag *entity.Tag) (tagList []*entity.Tag, err error) {
 	tagList = make([]*entity.Tag, 0)
-	session := tr.data.DB.Context(ctx).Where(builder.Eq{"status": entity.TagStatusAvailable})
+	session := tr.data.SiteDB(ctx).Where(builder.Eq{"status": entity.TagStatusAvailable})
 	err = session.Find(&tagList, tag)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()

@@ -60,7 +60,7 @@ func (vr *VoteRepo) GetVoteStatus(ctx context.Context, objectID, userID string) 
 			return ""
 		}
 		at := &entity.Activity{}
-		has, err := vr.data.DB.Context(ctx).Where("object_id = ? AND cancelled = 0 AND activity_type = ? AND user_id = ?",
+		has, err := vr.data.SiteDB(ctx).Where("object_id = ? AND cancelled = 0 AND activity_type = ? AND user_id = ?",
 			objectID, activityType, userID).Get(at)
 		if err != nil {
 			log.Error(err)
@@ -75,7 +75,7 @@ func (vr *VoteRepo) GetVoteStatus(ctx context.Context, objectID, userID string) 
 
 func (vr *VoteRepo) GetVoteCount(ctx context.Context, activityTypes []int) (count int64, err error) {
 	list := make([]*entity.Activity, 0)
-	count, err = vr.data.DB.Context(ctx).Where("cancelled =0").In("activity_type", activityTypes).FindAndCount(&list)
+	count, err = vr.data.SiteDB(ctx).Where("cancelled =0").In("activity_type", activityTypes).FindAndCount(&list)
 	if err != nil {
 		return count, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

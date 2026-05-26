@@ -45,6 +45,7 @@ type SearchContent struct {
 	Active      int64               `json:"active"`
 	Score       int64               `json:"score"`
 	HasAccepted bool                `json:"hasAccepted"`
+	SiteID      string              `json:"siteID,omitempty"`
 }
 
 type SearchBasicCond struct {

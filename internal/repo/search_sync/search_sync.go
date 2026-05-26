@@ -43,7 +43,7 @@ func (p *PluginSyncer) GetAnswersPage(ctx context.Context, page, pageSize int) (
 	answerList []*plugin.SearchContent, err error) {
 	answers := make([]*entity.Answer, 0)
 	startNum := (page - 1) * pageSize
-	err = p.data.DB.Context(ctx).Limit(pageSize, startNum).Find(&answers)
+	err = p.data.SiteDB(ctx).Limit(pageSize, startNum).Find(&answers)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (p *PluginSyncer) GetQuestionsPage(ctx context.Context, page, pageSize int)
 	questionList []*plugin.SearchContent, err error) {
 	questions := make([]*entity.Question, 0)
 	startNum := (page - 1) * pageSize
-	err = p.data.DB.Context(ctx).Limit(pageSize, startNum).Find(&questions)
+	err = p.data.SiteDB(ctx).Limit(pageSize, startNum).Find(&questions)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (p *PluginSyncer) convertAnswers(ctx context.Context, answers []*entity.Ans
 	answerList []*plugin.SearchContent, err error) {
 	for _, answer := range answers {
 		question := &entity.Question{}
-		exist, err := p.data.DB.Context(ctx).Where("id = ?", answer.QuestionID).Get(question)
+		exist, err := p.data.SiteDB(ctx).Where("id = ?", answer.QuestionID).Get(question)
 		if err != nil {
 			log.Errorf("get question failed %s", err)
 			continue
@@ -76,7 +76,7 @@ func (p *PluginSyncer) convertAnswers(ctx context.Context, answers []*entity.Ans
 
 		tagListList := make([]*entity.TagRel, 0)
 		tags := make([]string, 0)
-		err = p.data.DB.Context(ctx).Where("object_id = ?", uid.DeShortID(question.ID)).
+		err = p.data.SiteDB(ctx).Where("object_id = ?", uid.DeShortID(question.ID)).
 			Where("status = ?", entity.TagRelStatusAvailable).Find(&tagListList)
 		if err != nil {
 			log.Errorf("get tag list failed %s", err)
@@ -111,7 +111,7 @@ func (p *PluginSyncer) convertQuestions(ctx context.Context, questions []*entity
 	for _, question := range questions {
 		tagListList := make([]*entity.TagRel, 0)
 		tags := make([]string, 0)
-		err := p.data.DB.Context(ctx).Where("object_id = ?", question.ID).
+		err := p.data.SiteDB(ctx).Where("object_id = ?", question.ID).
 			Where("status = ?", entity.TagRelStatusAvailable).Find(&tagListList)
 		if err != nil {
 			log.Errorf("get tag list failed %s", err)

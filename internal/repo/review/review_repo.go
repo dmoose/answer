@@ -44,7 +44,7 @@ func NewReviewRepo(data *data.Data) review.ReviewRepo {
 
 // AddReview add review
 func (cr *reviewRepo) AddReview(ctx context.Context, review *entity.Review) (err error) {
-	_, err = cr.data.DB.Context(ctx).Insert(review)
+	_, err = cr.data.SiteInsert(ctx, review)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -53,7 +53,7 @@ func (cr *reviewRepo) AddReview(ctx context.Context, review *entity.Review) (err
 
 // UpdateReviewStatus update review status
 func (cr *reviewRepo) UpdateReviewStatus(ctx context.Context, reviewID int, reviewerUserID string, status int) (err error) {
-	_, err = cr.data.DB.Context(ctx).ID(reviewID).Update(&entity.Review{
+	_, err = cr.data.SiteDB(ctx).ID(reviewID).Update(&entity.Review{
 		ReviewerUserID: reviewerUserID, Status: status})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -65,7 +65,7 @@ func (cr *reviewRepo) UpdateReviewStatus(ctx context.Context, reviewID int, revi
 func (cr *reviewRepo) GetReview(ctx context.Context, reviewID int) (
 	review *entity.Review, exist bool, err error) {
 	review = &entity.Review{}
-	exist, err = cr.data.DB.Context(ctx).ID(reviewID).Get(review)
+	exist, err = cr.data.SiteDB(ctx).ID(reviewID).Get(review)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -75,7 +75,7 @@ func (cr *reviewRepo) GetReview(ctx context.Context, reviewID int) (
 // GetReviewByObject get review by object
 func (cr *reviewRepo) GetReviewByObject(ctx context.Context, objectID string) (review *entity.Review, exist bool, err error) {
 	review = &entity.Review{}
-	exist, err = cr.data.DB.Context(ctx).Desc("id").Where("object_id = ?", objectID).Get(review)
+	exist, err = cr.data.SiteDB(ctx).Desc("id").Where("object_id = ?", objectID).Get(review)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -84,7 +84,7 @@ func (cr *reviewRepo) GetReviewByObject(ctx context.Context, objectID string) (r
 
 // GetReviewCount get review count
 func (cr *reviewRepo) GetReviewCount(ctx context.Context, status int) (count int64, err error) {
-	count, err = cr.data.DB.Context(ctx).Count(&entity.Review{Status: status})
+	count, err = cr.data.SiteDB(ctx).Count(&entity.Review{Status: status})
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -94,7 +94,7 @@ func (cr *reviewRepo) GetReviewCount(ctx context.Context, status int) (count int
 // GetReviewPage get review page
 func (cr *reviewRepo) GetReviewPage(ctx context.Context, page, pageSize int, cond *entity.Review) (
 	reviewList []*entity.Review, total int64, err error) {
-	session := cr.data.DB.Context(ctx).Asc("created_at")
+	session := cr.data.SiteDB(ctx).Asc("created_at")
 	reviewList = make([]*entity.Review, 0)
 	total, err = pager.Help(page, pageSize, &reviewList, cond, session)
 	if err != nil {

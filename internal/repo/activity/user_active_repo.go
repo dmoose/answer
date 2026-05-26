@@ -28,6 +28,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/activity"
 	"github.com/apache/answer/internal/service/activity_common"
 	"github.com/apache/answer/internal/service/config"
@@ -107,6 +108,7 @@ func (ar *UserActiveActivityRepo) UserActive(ctx context.Context, userID string)
 			return nil, err
 		}
 
+		multisite.SetSiteID(ctx, addActivity)
 		_, err = session.Insert(addActivity)
 		if err != nil {
 			return nil, err
