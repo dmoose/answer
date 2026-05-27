@@ -59,6 +59,7 @@ import (
 	"github.com/apache/answer/internal/service/revision_common"
 	"github.com/apache/answer/internal/service/role"
 	"github.com/apache/answer/internal/service/search_parser"
+	"github.com/apache/answer/internal/service/site"
 	"github.com/apache/answer/internal/service/siteinfo"
 	"github.com/apache/answer/internal/service/siteinfo_common"
 	"github.com/apache/answer/internal/service/tag"
@@ -138,4 +139,6 @@ var ProviderSetService = wire.NewSet(
 	feature_toggle.NewFeatureToggleService,
 	embedding.NewEmbeddingService,
 	vector_sync.NewService,
+	site.NewSiteService,
+	site.NewNetworkProfileService,
 )

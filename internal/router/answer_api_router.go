@@ -62,6 +62,8 @@ type AnswerAPIRouter struct {
 	aiConversationController      *controller.AIConversationController
 	aiConversationAdminController *controller_admin.AIConversationAdminController
 	mcpController                 *controller.MCPController
+	siteController                *controller.SiteController
+	siteAdminController           *controller_admin.SiteAdminController
 }
 
 func NewAnswerAPIRouter(
@@ -100,6 +102,8 @@ func NewAnswerAPIRouter(
 	aiConversationController *controller.AIConversationController,
 	aiConversationAdminController *controller_admin.AIConversationAdminController,
 	mcpController *controller.MCPController,
+	siteController *controller.SiteController,
+	siteAdminController *controller_admin.SiteAdminController,
 ) *AnswerAPIRouter {
 	return &AnswerAPIRouter{
 		langController:                langController,
@@ -137,6 +141,8 @@ func NewAnswerAPIRouter(
 		aiConversationController:      aiConversationController,
 		aiConversationAdminController: aiConversationAdminController,
 		mcpController:                 mcpController,
+		siteController:                siteController,
+		siteAdminController:           siteAdminController,
 	}
 }
 
@@ -214,6 +220,10 @@ func (a *AnswerAPIRouter) RegisterUnAuthAnswerAPIRouter(r *gin.RouterGroup) {
 	r.GET("/badge/user/awards/recent", a.badgeController.GetRecentBadgeAwardListByUsername)
 	r.GET("/badge/user/awards", a.badgeController.GetAllBadgeAwardListByUsername)
 	r.GET("/badges", a.badgeController.GetBadgeList)
+
+	// multi-site
+	r.GET("/sites", a.siteController.GetSiteList)
+	r.GET("/network/user/profile", a.siteController.GetNetworkProfile)
 }
 
 func (a *AnswerAPIRouter) RegisterAuthUserWithAnyStatusAnswerAPIRouter(r *gin.RouterGroup) {
@@ -436,4 +446,10 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	r.GET("/ai/conversation/page", a.aiConversationAdminController.GetConversationList)
 	r.GET("/ai/conversation", a.aiConversationAdminController.GetConversationDetail)
 	r.DELETE("/ai/conversation", a.aiConversationAdminController.DeleteConversation)
+
+	// multi-site management
+	r.POST("/site", a.siteAdminController.AddSite)
+	r.PUT("/site", a.siteAdminController.UpdateSite)
+	r.GET("/site", a.siteAdminController.GetSite)
+	r.GET("/sites", a.siteAdminController.GetSiteList)
 }

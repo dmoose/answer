@@ -48,6 +48,7 @@ import (
 	"github.com/apache/answer/internal/repo/revision"
 	"github.com/apache/answer/internal/repo/role"
 	"github.com/apache/answer/internal/repo/search_common"
+	"github.com/apache/answer/internal/repo/site"
 	"github.com/apache/answer/internal/repo/site_info"
 	"github.com/apache/answer/internal/repo/tag"
 	"github.com/apache/answer/internal/repo/tag_common"
@@ -113,4 +114,7 @@ var ProviderSetRepo = wire.NewSet(
 	file_record.NewFileRecordRepo,
 	api_key.NewAPIKeyRepo,
 	ai_conversation.NewAIConversationRepo,
+	site.NewSiteRepo,
+	rank.NewUserSiteRankRepo,
+	role.NewUserSiteRoleRelRepo,
 )
