@@ -79,6 +79,9 @@ var (
 		&entity.APIKey{},
 		&entity.AIConversation{},
 		&entity.AIConversationRecord{},
+		&entity.Site{},
+		&entity.UserSiteRank{},
+		&entity.UserSiteRoleRel{},
 	}
 
 	roles = []*entity.Role{

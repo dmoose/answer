@@ -46,14 +46,14 @@ func NewSiteInfo(data *data.Data) siteinfo_common.SiteInfoRepo {
 // SaveByType save site setting by type
 func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *entity.SiteInfo) (err error) {
 	old := &entity.SiteInfo{}
-	exist, err := sr.data.SiteDB(ctx).Where(builder.Eq{"type": siteType}).Get(old)
+	exist, err := sr.data.DB.Context(ctx).Where(builder.Eq{"type": siteType}).Get(old)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	if exist {
-		_, err = sr.data.SiteDB(ctx).ID(old.ID).Update(data)
+		_, err = sr.data.DB.Context(ctx).ID(old.ID).Update(data)
 	} else {
-		_, err = sr.data.SiteInsert(ctx, data)
+		_, err = sr.data.DB.Context(ctx).Insert(data)
 	}
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -71,7 +71,7 @@ func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutC
 		}
 	}
 	siteInfo = &entity.SiteInfo{}
-	exist, err = sr.data.SiteDB(ctx).Where(builder.Eq{"type": siteType}).Get(siteInfo)
+	exist, err = sr.data.DB.Context(ctx).Where(builder.Eq{"type": siteType}).Get(siteInfo)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		return nil, false, err
@@ -106,7 +106,7 @@ func (sr *siteInfoRepo) setCache(ctx context.Context, siteType string, siteInfo 
 
 func (sr *siteInfoRepo) IsBrandingFileUsed(ctx context.Context, filePath string) (bool, error) {
 	siteInfo := &entity.SiteInfo{}
-	count, err := sr.data.SiteDB(ctx).
+	count, err := sr.data.DB.Context(ctx).
 		Table("site_info").
 		Where(builder.Eq{"type": "branding"}).
 		And(builder.Like{"content", "%" + filePath + "%"}).

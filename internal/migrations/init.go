@@ -66,6 +66,7 @@ func (m *Mentor) InitDB() error {
 	m.do("check table exist", m.checkTableExist)
 	m.do("sync table", m.syncTable)
 	m.do("init version table", m.initVersionTable)
+	m.do("init default site", m.initDefaultSite)
 	m.do("init admin user", m.initAdminUser)
 	m.do("init config", m.initConfig)
 	m.do("init default privileges config", m.initDefaultRankPrivileges)
@@ -394,6 +395,7 @@ func (m *Mentor) initDefaultContent() {
 		QuestionCount: 2,
 		Status:        entity.TagStatusAvailable,
 		RevisionID:    "0",
+		SiteID:        constant.DefaultSiteID,
 	}
 
 	q1 := &entity.Question{
@@ -412,6 +414,7 @@ func (m *Mentor) initDefaultContent() {
 		LastAnswerID:     a1Id,
 		PostUpdateTime:   now,
 		RevisionID:       "0",
+		SiteID:           constant.DefaultSiteID,
 	}
 
 	a1 := &entity.Answer{
@@ -424,6 +427,7 @@ func (m *Mentor) initDefaultContent() {
 		ParsedText:     "<p>Tags help to organize content and make searching easier. It helps your question get more attention from people interested in that tag. Tags also send notifications. If you are interested in some topic, follow that tag to get updates.</p>",
 		Status:         entity.AnswerStatusAvailable,
 		RevisionID:     "0",
+		SiteID:         constant.DefaultSiteID,
 	}
 
 	q2 := &entity.Question{
@@ -442,6 +446,7 @@ func (m *Mentor) initDefaultContent() {
 		LastAnswerID:     a2Id,
 		PostUpdateTime:   now,
 		RevisionID:       "0",
+		SiteID:           constant.DefaultSiteID,
 	}
 
 	a2 := &entity.Answer{
@@ -454,6 +459,7 @@ func (m *Mentor) initDefaultContent() {
 		ParsedText:     "<p>Your reputation points show how much the community values your knowledge. You earn points when someone find your question or answer helpful. You also get points when the person who asked the question thinks you did a good job and accepts your answer.</p>",
 		Status:         entity.AnswerStatusAvailable,
 		RevisionID:     "0",
+		SiteID:         constant.DefaultSiteID,
 	}
 
 	_, m.err = m.engine.Context(m.ctx).Insert(tag)
@@ -633,4 +639,16 @@ func (m *Mentor) initSiteInfoMCP() {
 		Content: string(writeDataBytes),
 		Status:  1,
 	})
+}
+
+func (m *Mentor) initDefaultSite() {
+	_, m.err = m.engine.Context(m.ctx).Insert(&entity.Site{
+		ID:     constant.DefaultSiteID,
+		Name:   m.userData.SiteName,
+		Slug:   "default",
+		Status: entity.SiteStatusActive,
+	})
+	if m.err == nil {
+		m.ctx = context.WithValue(m.ctx, constant.SiteIDContextKey, constant.DefaultSiteID)
+	}
 }
