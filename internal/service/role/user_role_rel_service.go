@@ -38,13 +38,15 @@ type UserRoleRelRepo interface {
 type UserRoleRelService struct {
 	userRoleRelRepo UserRoleRelRepo
 	roleService     *RoleService
+	siteRoleRepo    SiteRoleRepo
 }
 
 // NewUserRoleRelService new user role rel service
-func NewUserRoleRelService(userRoleRelRepo UserRoleRelRepo, roleService *RoleService) *UserRoleRelService {
+func NewUserRoleRelService(userRoleRelRepo UserRoleRelRepo, roleService *RoleService, siteRoleRepo SiteRoleRepo) *UserRoleRelService {
 	return &UserRoleRelService{
 		userRoleRelRepo: userRoleRelRepo,
 		roleService:     roleService,
+		siteRoleRepo:    siteRoleRepo,
 	}
 }
 
@@ -108,11 +110,11 @@ func (us *UserRoleRelService) GetUserRole(ctx context.Context, userID string) (r
 	if err != nil {
 		return 0, err
 	}
-	if !exist {
-		// set default role
-		return 1, nil
+	globalRole := RoleUserID
+	if exist {
+		globalRole = rolePowerRel.RoleID
 	}
-	return rolePowerRel.RoleID, nil
+	return us.getEffectiveRole(ctx, userID, globalRole), nil
 }
 
 // GetUserByRoleID get user by role id
