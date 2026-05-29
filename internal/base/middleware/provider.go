@@ -29,4 +29,5 @@ var ProviderSetMiddleware = wire.NewSet(
 	NewAvatarMiddleware,
 	NewShortIDMiddleware,
 	NewRateLimitMiddleware,
+	NewSiteMiddleware,
 )

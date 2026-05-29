@@ -42,6 +42,7 @@ func NewHTTPServer(debug bool,
 	authUserMiddleware *middleware.AuthUserMiddleware,
 	avatarMiddleware *middleware.AvatarMiddleware,
 	shortIDMiddleware *middleware.ShortIDMiddleware,
+	siteMiddleware *middleware.SiteMiddleware,
 	templateRouter *router.TemplateRouter,
 	pluginAPIRouter *router.PluginAPIRouter,
 	uiConf *UI,
@@ -57,7 +58,7 @@ func NewHTTPServer(debug bool,
 			return
 		}
 		brotli.Brotli(brotli.DefaultCompression)(ctx)
-	}, middleware.ExtractAndSetAcceptLanguage, shortIDMiddleware.SetShortIDFlag())
+	}, middleware.ExtractAndSetAcceptLanguage, shortIDMiddleware.SetShortIDFlag(), siteMiddleware.ResolveSite())
 	r.GET("/healthz", func(ctx *gin.Context) { ctx.String(200, "OK") })
 
 	templatePath := os.Getenv("ANSWER_TEMPLATE_PATH")
