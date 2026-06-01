@@ -61,6 +61,10 @@ class Request {
         const lang = getCurrentLang();
         requestConfig.headers.set('Authorization', token);
         requestConfig.headers.set('Accept-Language', lang);
+        const siteId = Storage.get('CURRENT_SITE_ID') || '';
+        if (siteId) {
+          requestConfig.headers.set('X-Site-ID', siteId);
+        }
         return requestConfig;
       },
       (err: AxiosError) => {

@@ -317,6 +317,10 @@ export const getAppSettings = () => {
   return request.get<Type.SiteSettings>('/answer/api/v1/siteinfo');
 };
 
+export const getSiteList = () => {
+  return request.get('/answer/api/v1/sites');
+};
+
 export const reopenQuestion = (params: { question_id: string }) => {
   return request.put('/answer/api/v1/question/reopen', params);
 };

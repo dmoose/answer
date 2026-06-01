@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { getLoggedUserInfo, getAppSettings } from '@/services';
+import { getLoggedUserInfo, getAppSettings, getSiteList } from '@/services';
 import {
   loggedUserInfoStore,
   siteInfoStore,
@@ -33,6 +33,7 @@ import {
   siteSecurityStore,
   aiControlStore,
 } from '@/stores';
+import currentSiteStore from '@/stores/currentSite';
 import { RouteAlias } from '@/router/alias';
 import {
   LOGGED_TOKEN_STORAGE_KEY,
@@ -391,6 +392,15 @@ export const initAppSettingsStore = async () => {
       ai_enabled: appSettings.ai_enabled,
     });
     siteSecurityStore.getState().update(appSettings.site_security);
+  }
+
+  try {
+    const siteListResp = await getSiteList();
+    if (siteListResp && Array.isArray(siteListResp)) {
+      currentSiteStore.getState().setSites(siteListResp);
+    }
+  } catch {
+    // site list unavailable — single-site mode
   }
 };
 
