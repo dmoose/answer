@@ -78,17 +78,20 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			}
 		}
 
-		// 3. Path prefix: /s/{slug}/...
+		// 3. Path prefix: /s/{slug} or /s/{slug}/...
 		if siteID == "" {
 			path := ctx.Request.URL.Path
 			if strings.HasPrefix(path, "/s/") {
 				rest := path[3:]
+				slug := rest
+				remaining := "/"
 				if idx := strings.Index(rest, "/"); idx > 0 {
-					slug := rest[:idx]
-					if id := sm.resolve(slug); id != "" {
-						siteID = id
-						ctx.Request.URL.Path = rest[idx:]
-					}
+					slug = rest[:idx]
+					remaining = rest[idx:]
+				}
+				if id := sm.resolve(slug); id != "" {
+					siteID = id
+					ctx.Request.URL.Path = remaining
 				}
 			}
 		}

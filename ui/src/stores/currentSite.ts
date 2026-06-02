@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 
-import Storage from '@/utils/storage';
-
 export interface Site {
   id: string;
   name: string;
@@ -14,29 +12,47 @@ export interface Site {
 interface CurrentSiteState {
   currentSite: Site | null;
   sites: Site[];
-  setCurrentSite: (site: Site) => void;
   setSites: (sites: Site[]) => void;
+}
+
+function siteSlugFromURL(): string {
+  const path = window.location.pathname;
+  const match = path.match(/^\/s\/([^/]+)/);
+  return match ? match[1] : '';
+}
+
+function siteFromHostname(sites: Site[]): Site | null {
+  const host = window.location.hostname;
+  const sub = host.split('.')[0];
+  if (sub && sub !== 'www' && sub !== 'localhost') {
+    const match = sites.find((s) => s.slug === sub);
+    if (match) return match;
+  }
+  return null;
+}
+
+function resolveCurrentSite(sites: Site[]): Site | null {
+  if (sites.length === 0) return null;
+
+  const slug = siteSlugFromURL();
+  if (slug) {
+    const match = sites.find((s) => s.slug === slug);
+    if (match) return match;
+  }
+
+  const hostMatch = siteFromHostname(sites);
+  if (hostMatch) return hostMatch;
+
+  const defaultSite = sites.find((s) => s.slug === 'default');
+  return defaultSite || sites[0];
 }
 
 const currentSiteStore = create<CurrentSiteState>((set) => ({
   currentSite: null,
   sites: [],
-  setCurrentSite: (site) => {
-    Storage.set('CURRENT_SITE_ID', site.id);
-    set({ currentSite: site });
-  },
   setSites: (sites) => {
-    set({ sites });
-    if (sites.length > 0) {
-      const storedId = Storage.get('CURRENT_SITE_ID');
-      const match = sites.find((s) => s.id === storedId);
-      if (match) {
-        set({ currentSite: match });
-      } else {
-        Storage.set('CURRENT_SITE_ID', sites[0].id);
-        set({ currentSite: sites[0] });
-      }
-    }
+    const current = resolveCurrentSite(sites);
+    set({ sites, currentSite: current });
   },
 }));
 

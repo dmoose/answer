@@ -25,13 +25,19 @@ import '@/utils/pluginKit';
 import { useMergeRoutes } from '@/router';
 import InitialLoadingPlaceholder from '@/components/InitialLoadingPlaceholder';
 
+function getSiteBasename(): string {
+  const base = process.env.REACT_APP_BASE_URL || '';
+  const match = window.location.pathname.match(/^(\/s\/[^/]+)/);
+  return match ? match[1] : base;
+}
+
 function App() {
   const routes = useMergeRoutes();
   if (routes.length === 0) {
     return <InitialLoadingPlaceholder />;
   }
   const router = createBrowserRouter(routes, {
-    basename: process.env.REACT_APP_BASE_URL,
+    basename: getSiteBasename(),
   });
   return <RouterProvider router={router} />;
 }

@@ -35,9 +35,11 @@ import {
 } from '@/stores';
 import { logout, useQueryNotificationStatus } from '@/services';
 import { Icon, MobileSideNav } from '@/components';
+import { customizeStore } from '@/stores';
 
 import NavItems from './components/NavItems';
 import SearchInput from './components/SearchInput';
+import SiteSwitcher from './components/SiteSwitcher';
 
 import './index.scss';
 
@@ -48,6 +50,7 @@ const Header: FC = () => {
   const siteInfo = siteInfoStore((state) => state.siteInfo);
   const brandingInfo = brandingStore((state) => state.branding);
   const loginSetting = loginSettingStore((state) => state.login);
+  const customHeader = customizeStore((state) => state.custom_header);
   const { updateReview } = sideNavStore();
   const { data: redDot } = useQueryNotificationStatus();
   const [showMobileSideNav, setShowMobileSideNav] = useState(false);
@@ -105,6 +108,7 @@ const Header: FC = () => {
   }, []);
 
   return (
+    <>
     <Navbar
       data-bs-theme={themeMode}
       expand="xl"
@@ -163,6 +167,8 @@ const Header: FC = () => {
           </Button>
         </Nav>
 
+        <SiteSwitcher />
+
         {/* pc nav */}
         {user?.username ? (
           <Nav className="d-flex align-items-center flex-nowrap flex-row">
@@ -218,6 +224,13 @@ const Header: FC = () => {
 
       <MobileSideNav show={showMobileSideNav} onHide={setShowMobileSideNav} />
     </Navbar>
+      {customHeader && (
+        <div
+          className="site-banner text-center small py-2 border-bottom"
+          dangerouslySetInnerHTML={{ __html: customHeader }}
+        />
+      )}
+    </>
   );
 };
 

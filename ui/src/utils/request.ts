@@ -27,6 +27,7 @@ import type {
 
 import { Modal } from '@/components';
 import { loggedUserInfoStore, toastStore, errorCodeStore } from '@/stores';
+import currentSiteStore from '@/stores/currentSite';
 import { LOGGED_TOKEN_STORAGE_KEY } from '@/common/constants';
 import { RouteAlias } from '@/router/alias';
 import { getCurrentLang } from '@/utils/localize';
@@ -61,9 +62,9 @@ class Request {
         const lang = getCurrentLang();
         requestConfig.headers.set('Authorization', token);
         requestConfig.headers.set('Accept-Language', lang);
-        const siteId = Storage.get('CURRENT_SITE_ID') || '';
-        if (siteId) {
-          requestConfig.headers.set('X-Site-ID', siteId);
+        const { currentSite } = currentSiteStore.getState();
+        if (currentSite?.id) {
+          requestConfig.headers.set('X-Site-ID', currentSite.id);
         }
         return requestConfig;
       },
