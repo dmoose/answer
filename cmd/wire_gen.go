@@ -278,7 +278,7 @@ func initApplication(debug bool, serverConf *conf.Server, dbConf *data.Database,
 	aiConversationController := controller.NewAIConversationController(aiConversationService, featureToggleService)
 	aiConversationAdminController := controller_admin.NewAIConversationAdminController(aiConversationService, featureToggleService)
 	siteRepo := site.NewSiteRepo(dataData)
-	siteService := site2.NewSiteService(siteRepo)
+	siteService := site2.NewSiteService(siteRepo, siteRoleRepo)
 	networkProfileService := site2.NewNetworkProfileService(userCommon, siteRepo, siteRankRepo)
 	siteController := controller.NewSiteController(siteService, networkProfileService)
 	siteMiddleware := middleware.NewSiteMiddleware(engine)

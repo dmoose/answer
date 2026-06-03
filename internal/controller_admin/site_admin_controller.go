@@ -62,3 +62,23 @@ func (sc *SiteAdminController) GetSiteList(ctx *gin.Context) {
 	sites, err := sc.siteService.GetAllSites(ctx)
 	handler.HandleResponse(ctx, err, sites)
 }
+
+func (sc *SiteAdminController) SetUserSiteRole(ctx *gin.Context) {
+	req := &struct {
+		UserID string `json:"user_id" binding:"required"`
+		SiteID string `json:"site_id" binding:"required"`
+		RoleID int    `json:"role_id" binding:"required"`
+	}{}
+	if handler.BindAndCheck(ctx, req) {
+		return
+	}
+	err := sc.siteService.SetUserSiteRole(ctx, req.UserID, req.SiteID, req.RoleID)
+	handler.HandleResponse(ctx, err, nil)
+}
+
+func (sc *SiteAdminController) GetUserSiteRole(ctx *gin.Context) {
+	userID := ctx.Query("user_id")
+	siteID := ctx.Query("site_id")
+	r, err := sc.siteService.GetUserSiteRole(ctx, userID, siteID)
+	handler.HandleResponse(ctx, err, r)
+}

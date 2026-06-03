@@ -24,6 +24,7 @@ import (
 
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/pager"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
 	"github.com/apache/answer/internal/service/config"
@@ -61,6 +62,7 @@ func (ur *UserRankRepo) GetMaxDailyRank(ctx context.Context) (maxDailyRank int, 
 func (ur *UserRankRepo) CheckReachLimit(ctx context.Context, session *xorm.Session,
 	userID string, maxDailyRank int) (
 	reach bool, err error) {
+	multisite.Scope(session, ctx)
 	session.Where(builder.Eq{"user_id": userID})
 	session.Where(builder.Eq{"cancelled": 0})
 	session.Where(builder.Between{
@@ -97,7 +99,9 @@ func (ur *UserRankRepo) ChangeUserRank(
 	if err != nil {
 		return err
 	}
-	return nil
+
+	siteRankRepo := &UserSiteRankRepo{data: ur.data}
+	return siteRankRepo.ChangeSiteRank(ctx, session, userID, deltaRank)
 }
 
 // TriggerUserRank trigger user rank change
@@ -173,6 +177,7 @@ func (ur *UserRankRepo) checkUserTodayRank(ctx context.Context,
 
 	// get user
 	start, end := now.BeginningOfDay(), now.EndOfDay()
+	multisite.Scope(session, ctx)
 	session.Where(builder.Eq{"user_id": userID})
 	session.Where(builder.Eq{"cancelled": 0})
 	session.Where(builder.Between{
@@ -203,7 +208,7 @@ func (ur *UserRankRepo) UserRankPage(ctx context.Context, userID string, page, p
 ) {
 	rankPage = make([]*entity.Activity, 0)
 
-	session := ur.data.DB.Context(ctx).Where(builder.Eq{"has_rank": 1}.And(builder.Eq{"cancelled": 0})).And(builder.Gt{"`rank`": 0})
+	session := multisite.Scope(ur.data.DB.Context(ctx), ctx).Where(builder.Eq{"has_rank": 1}.And(builder.Eq{"cancelled": 0})).And(builder.Gt{"`rank`": 0})
 	session.Desc("created_at")
 
 	cond := &entity.Activity{UserID: userID}

@@ -32,6 +32,7 @@ import (
 	"github.com/apache/answer/pkg/htmltext"
 
 	"github.com/apache/answer/internal/base/data"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
@@ -132,6 +133,13 @@ func (sr *searchRepo) SearchContents(ctx context.Context, words []string, tagIDs
 
 	argsQ = append(argsQ, entity.QuestionStatusDeleted, entity.QuestionShow)
 	argsA = append(argsA, entity.QuestionStatusDeleted, entity.AnswerStatusDeleted, entity.QuestionShow)
+
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		b.And(builder.Eq{"`question`.`site_id`": siteID})
+		ub.And(builder.Eq{"`answer`.`site_id`": siteID})
+		argsQ = append(argsQ, siteID)
+		argsA = append(argsA, siteID)
+	}
 
 	likeConQ := builder.NewCond()
 	likeConA := builder.NewCond()
@@ -261,6 +269,11 @@ func (sr *searchRepo) SearchQuestions(ctx context.Context, words []string, tagID
 	b.Where(builder.Lt{"`question`.`status`": entity.QuestionStatusDeleted}).And(builder.Eq{"`question`.`show`": entity.QuestionShow})
 	args = append(args, entity.QuestionStatusDeleted, entity.QuestionShow)
 
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		b.And(builder.Eq{"`question`.`site_id`": siteID})
+		args = append(args, siteID)
+	}
+
 	likeConQ := builder.NewCond()
 	for _, word := range words {
 		likeConQ = likeConQ.Or(builder.Like{"title", word}).
@@ -374,6 +387,11 @@ func (sr *searchRepo) SearchAnswers(ctx context.Context, words []string, tagIDs 
 	b.Where(builder.Lt{"`question`.`status`": entity.QuestionStatusDeleted}).
 		And(builder.Lt{"`answer`.`status`": entity.AnswerStatusDeleted}).And(builder.Eq{"`question`.`show`": entity.QuestionShow})
 	args = append(args, entity.QuestionStatusDeleted, entity.AnswerStatusDeleted, entity.QuestionShow)
+
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		b.And(builder.Eq{"`answer`.`site_id`": siteID})
+		args = append(args, siteID)
+	}
 
 	likeConA := builder.NewCond()
 	for _, word := range words {

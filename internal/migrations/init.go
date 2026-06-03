@@ -539,6 +539,7 @@ func (m *Mentor) initDefaultContent() {
 		ObjectID: q1.ID,
 		TagID:    tag.ID,
 		Status:   entity.TagRelStatusAvailable,
+		SiteID:   constant.DefaultSiteID,
 	})
 	if m.err != nil {
 		return
@@ -591,6 +592,7 @@ func (m *Mentor) initDefaultContent() {
 		ObjectID: q2.ID,
 		TagID:    tag.ID,
 		Status:   entity.TagRelStatusAvailable,
+		SiteID:   constant.DefaultSiteID,
 	})
 	if m.err != nil {
 		return

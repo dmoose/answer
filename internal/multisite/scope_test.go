@@ -61,6 +61,17 @@ func TestSetSiteID_NoSite(t *testing.T) {
 	}
 }
 
+func TestSetSiteID_Slice(t *testing.T) {
+	ctx := context.WithValue(context.Background(), constant.SiteIDContextKey, "site-123")
+	items := []*testEntity{{Name: "a"}, {Name: "b"}}
+	SetSiteID(ctx, items)
+	for _, e := range items {
+		if e.SiteID != "site-123" {
+			t.Errorf("SetSiteID slice item %s = %q, want %q", e.Name, e.SiteID, "site-123")
+		}
+	}
+}
+
 func TestSetSiteID_NonStruct(t *testing.T) {
 	ctx := context.WithValue(context.Background(), constant.SiteIDContextKey, "site-123")
 	s := "not a struct"

@@ -38,7 +38,7 @@ type Tag struct {
 	UpdatedAt       time.Time `xorm:"updated TIMESTAMP updated_at"`
 	MainTagID       int64     `xorm:"not null default 0 BIGINT(20) main_tag_id"`
 	MainTagSlugName string    `xorm:"not null default '' VARCHAR(35) main_tag_slug_name"`
-	SlugName        string    `xorm:"not null default '' unique VARCHAR(35) slug_name"`
+	SlugName        string    `xorm:"not null default '' VARCHAR(35) UNIQUE(uq_tag_slug_site) slug_name"`
 	DisplayName     string    `xorm:"not null default '' VARCHAR(35) display_name"`
 	OriginalText    string    `xorm:"not null MEDIUMTEXT original_text"`
 	ParsedText      string    `xorm:"not null MEDIUMTEXT parsed_text"`
@@ -49,7 +49,7 @@ type Tag struct {
 	Reserved        bool      `xorm:"not null default false BOOL reserved"`
 	RevisionID      string    `xorm:"not null default 0 BIGINT(20) revision_id"`
 	UserID          string    `xorm:"not null default 0 BIGINT(20) user_id"`
-	SiteID          string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
+	SiteID          string    `xorm:"not null default '' VARCHAR(36) INDEX UNIQUE(uq_tag_slug_site) site_id"`
 }
 
 // TableName tag table name

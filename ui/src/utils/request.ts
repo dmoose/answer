@@ -65,6 +65,11 @@ class Request {
         const { currentSite } = currentSiteStore.getState();
         if (currentSite?.id) {
           requestConfig.headers.set('X-Site-ID', currentSite.id);
+        } else {
+          const slugMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
+          if (slugMatch) {
+            requestConfig.headers.set('X-Site-Slug', slugMatch[1]);
+          }
         }
         return requestConfig;
       },

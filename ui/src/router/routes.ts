@@ -461,6 +461,10 @@ const routes: RouteNode[] = [
             path: 'mcp',
             page: 'pages/Admin/Mcp',
           },
+          {
+            path: 'sites',
+            page: 'pages/Admin/Sites',
+          },
         ],
       },
       {

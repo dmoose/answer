@@ -400,7 +400,7 @@ export const initAppSettingsStore = async () => {
       currentSiteStore.getState().setSites(siteListResp);
     }
   } catch {
-    // site list unavailable — single-site mode
+    // site list unavailable
   }
 };
 

@@ -452,4 +452,6 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	r.PUT("/site", a.siteAdminController.UpdateSite)
 	r.GET("/site", a.siteAdminController.GetSite)
 	r.GET("/sites", a.siteAdminController.GetSiteList)
+	r.PUT("/site/role", a.siteAdminController.SetUserSiteRole)
+	r.GET("/site/role", a.siteAdminController.GetUserSiteRole)
 }

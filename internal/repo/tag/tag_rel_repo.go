@@ -212,14 +212,14 @@ func (tr *tagRelRepo) MigrateTagObjects(ctx context.Context, sourceTagId, target
 	_, err := tr.data.DB.Transaction(func(session *xorm.Session) (result any, err error) {
 		// 1. Get all objects related to source tag
 		var sourceObjects []entity.TagRel
-		err = session.Where("tag_id = ?", sourceTagId).Find(&sourceObjects)
+		err = multisite.Scope(session, ctx).Where("tag_id = ?", sourceTagId).Find(&sourceObjects)
 		if err != nil {
 			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		}
 
 		// 2. Get existing target tag relations
 		var existingTargets []entity.TagRel
-		err = session.Where("tag_id = ?", targetTagId).Find(&existingTargets)
+		err = multisite.Scope(session, ctx).Where("tag_id = ?", targetTagId).Find(&existingTargets)
 		if err != nil {
 			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		}
@@ -253,7 +253,7 @@ func (tr *tagRelRepo) MigrateTagObjects(ctx context.Context, sourceTagId, target
 		}
 
 		// 4. Remove old relations
-		_, err = session.Where("tag_id = ?", sourceTagId).Delete(&entity.TagRel{})
+		_, err = multisite.Scope(session, ctx).Where("tag_id = ?", sourceTagId).Delete(&entity.TagRel{})
 		if err != nil {
 			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		}

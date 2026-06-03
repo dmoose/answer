@@ -35,7 +35,7 @@ type TagRel struct {
 	ObjectID  string    `xorm:"not null INDEX UNIQUE(s) BIGINT(20) object_id"`
 	TagID     string    `xorm:"not null INDEX UNIQUE(s) BIGINT(20) tag_id"`
 	Status    int       `xorm:"not null default 1 INT(11) status"`
-	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
+	SiteID    string    `xorm:"not null default '' VARCHAR(36) INDEX UNIQUE(s) site_id"`
 }
 
 // TableName tag list table name

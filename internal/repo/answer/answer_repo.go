@@ -25,6 +25,7 @@ import (
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/data"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
@@ -422,7 +423,10 @@ func (ar *answerRepo) GetPersonalAnswerPage(ctx context.Context, req *entity.Per
 func (ar *answerRepo) AdminSearchList(ctx context.Context, req *schema.AdminAnswerPageReq) (
 	resp []*entity.Answer, total int64, err error) {
 	cond := &entity.Answer{}
-	session := ar.data.SiteDB(ctx)
+	session := ar.data.DB.Context(ctx)
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		session = session.Where("answer.site_id = ?", siteID)
+	}
 	if len(req.QuestionID) == 0 && len(req.AnswerID) == 0 {
 		session.Join("INNER", "question", "answer.question_id = question.id")
 		if len(req.QuestionTitle) > 0 {

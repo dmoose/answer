@@ -22,9 +22,9 @@ package entity
 // PluginConfig plugin config
 type PluginConfig struct {
 	ID             int    `xorm:"not null pk autoincr INT(11) id"`
-	PluginSlugName string `xorm:"unique VARCHAR(128) plugin_slug_name"`
+	PluginSlugName string `xorm:"VARCHAR(128) UNIQUE(uq_plugin_cfg_site) plugin_slug_name"`
 	Value          string `xorm:"TEXT value"`
-	SiteID         string `xorm:"not null default '' VARCHAR(36) INDEX site_id"`
+	SiteID         string `xorm:"not null default '' VARCHAR(36) INDEX UNIQUE(uq_plugin_cfg_site) site_id"`
 }
 
 // TableName config table name

@@ -29,6 +29,7 @@ import (
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/data"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
@@ -396,7 +397,10 @@ func (qr *questionRepo) GetQuestionPage(ctx context.Context, page, pageSize int,
 	tagIDs []string, userID, orderCond string, inDays int, showHidden, showPending bool) (
 	questionList []*entity.Question, total int64, err error) {
 	questionList = make([]*entity.Question, 0)
-	session := qr.data.SiteDB(ctx)
+	session := qr.data.DB.Context(ctx)
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		session = session.Where("question.site_id = ?", siteID)
+	}
 	status := []int{entity.QuestionStatusAvailable}
 	if orderCond != "unanswered" {
 		status = append(status, entity.QuestionStatusClosed)
@@ -469,7 +473,10 @@ func (qr *questionRepo) GetRecommendQuestionPageByTags(ctx context.Context, user
 		selectSQL += fmt.Sprintf(", CASE WHEN question.id IN (%s) THEN 0 ELSE 1 END AS order_priority", idStr)
 		orderBySQL = "order_priority, " + orderBySQL
 	}
-	session := qr.data.SiteDB(ctx).Select(selectSQL)
+	session := qr.data.DB.Context(ctx).Select(selectSQL)
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		session = session.Where("question.site_id = ?", siteID)
+	}
 
 	if len(tagIDs) > 0 {
 		session.Where("question.user_id != ?", userID).
@@ -827,9 +834,13 @@ func (qr *questionRepo) GetQuestionLink(ctx context.Context, page, pageSize int,
 		).WithStack()
 	}
 
-	session := qr.data.SiteDB(ctx).
+	session := qr.data.DB.Context(ctx).
 		Table("question_link").
-		Join("INNER", "question", "question_link.from_question_id = question.id").
+		Join("INNER", "question", "question_link.from_question_id = question.id AND question_link.site_id = question.site_id")
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		session = session.Where("question_link.site_id = ?", siteID)
+	}
+	session = session.
 		Where("question_link.to_question_id = ? AND question.show = ?", questionID, entity.QuestionShow).
 		Distinct("question.id").
 		Where("question_link.status = ?", entity.QuestionLinkStatusAvailable).

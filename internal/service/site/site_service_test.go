@@ -51,7 +51,7 @@ func (m *mockSiteRepo) GetAllSites(_ context.Context) ([]*entity.Site, error) {
 
 func TestSiteService_AddSite(t *testing.T) {
 	repo := newMockSiteRepo()
-	svc := NewSiteService(repo)
+	svc := NewSiteService(repo, nil)
 
 	s, err := svc.AddSite(context.Background(), "Go Community", "golang", "Go Q&A", "https://go.example.com")
 	if err != nil {
@@ -73,10 +73,10 @@ func TestSiteService_AddSite(t *testing.T) {
 
 func TestSiteService_GetAllSites(t *testing.T) {
 	repo := newMockSiteRepo()
-	svc := NewSiteService(repo)
+	svc := NewSiteService(repo, nil)
 
-	_, _ = svc.AddSite(context.Background(), "Site A", "a", "", "")
-	_, _ = svc.AddSite(context.Background(), "Site B", "b", "", "")
+	_, _ = svc.AddSite(context.Background(), "Site A", "site-a", "", "")
+	_, _ = svc.AddSite(context.Background(), "Site B", "site-b", "", "")
 
 	sites, err := svc.GetAllSites(context.Background())
 	if err != nil {

@@ -1838,6 +1838,7 @@ ui:
     ai_assistant: AI Assistant
     ai_settings: AI Settings
     mcp: MCP
+    sites: Sites
   website_welcome: Welcome to {{site_name}}
   user_center:
     login: Login

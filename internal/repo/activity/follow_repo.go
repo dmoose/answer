@@ -76,7 +76,7 @@ func (ar *FollowRepo) Follow(ctx context.Context, objectID, userID string) error
 		)
 		result = nil
 
-		has, err = session.Where(builder.Eq{"activity_type": activityType}).
+		has, err = multisite.Scope(session, ctx).Where(builder.Eq{"activity_type": activityType}).
 			And(builder.Eq{"user_id": userID}).
 			And(builder.Eq{"object_id": objectID}).
 			Get(&existsActivity)
@@ -145,7 +145,7 @@ func (ar *FollowRepo) FollowCancel(ctx context.Context, objectID, userID string)
 		)
 		result = nil
 
-		has, err = session.Where(builder.Eq{"activity_type": activityType}).
+		has, err = multisite.Scope(session, ctx).Where(builder.Eq{"activity_type": activityType}).
 			And(builder.Eq{"user_id": userID}).
 			And(builder.Eq{"object_id": objectID}).
 			Get(&existsActivity)

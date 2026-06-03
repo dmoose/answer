@@ -313,7 +313,7 @@ func (vr *VoteRepo) rollbackUserRank(ctx context.Context, session *xorm.Session,
 func (vr *VoteRepo) saveActivitiesAvailable(ctx context.Context, session *xorm.Session, op *schema.VoteOperationInfo) (newAct bool, err error) {
 	for _, activity := range op.Activities {
 		existsActivity := &entity.Activity{}
-		exist, err := session.
+		exist, err := multisite.Scope(session, ctx).
 			Where(builder.Eq{"object_id": op.ObjectID}).
 			And(builder.Eq{"user_id": activity.ActivityUserID}).
 			And(builder.Eq{"trigger_user_id": activity.TriggerUserID}).

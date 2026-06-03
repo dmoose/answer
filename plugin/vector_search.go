@@ -52,6 +52,8 @@ type VectorSearchContent struct {
 	Content string `json:"content"`
 	// Metadata is a JSON string containing VectorSearchMetadata.
 	Metadata string `json:"metadata"`
+	// SiteID scopes this content to a specific site in multi-site deployments.
+	SiteID string `json:"siteID,omitempty"`
 }
 
 // VectorSearchDesc describes the vector search engine for display purposes.

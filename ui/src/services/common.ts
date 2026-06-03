@@ -321,6 +321,35 @@ export const getSiteList = () => {
   return request.get('/answer/api/v1/sites');
 };
 
+export const getAdminSiteList = () => {
+  return request.get('/answer/admin/api/sites');
+};
+
+export const addSite = (params: {
+  name: string;
+  slug: string;
+  description?: string;
+}) => {
+  return request.post('/answer/admin/api/site', params);
+};
+
+export const updateSite = (params: {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+}) => {
+  return request.put('/answer/admin/api/site', params);
+};
+
+export const setUserSiteRole = (params: {
+  user_id: string;
+  site_id: string;
+  role_id: number;
+}) => {
+  return request.put('/answer/admin/api/site/role', params);
+};
+
 export const reopenQuestion = (params: { question_id: string }) => {
   return request.put('/answer/api/v1/question/reopen', params);
 };

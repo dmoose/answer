@@ -49,6 +49,17 @@ func (sm *SiteMiddleware) resolve(slug string) string {
 	return sm.cache[slug]
 }
 
+func (sm *SiteMiddleware) validSiteID(id string) bool {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	for _, v := range sm.cache {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		path := ctx.Request.URL.Path
@@ -61,9 +72,18 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 
 		var siteID string
 
-		// 1. Explicit header (API clients)
+		// 1. Explicit ID header (API clients) — validate against known sites
 		if h := ctx.GetHeader("X-Site-ID"); h != "" {
-			siteID = h
+			if sm.validSiteID(h) {
+				siteID = h
+			}
+		}
+
+		// 1b. Slug header (frontend before site ID is known)
+		if siteID == "" {
+			if h := ctx.GetHeader("X-Site-Slug"); h != "" {
+				siteID = sm.resolve(h)
+			}
 		}
 
 		// 2. Subdomain: product-a.example.com
@@ -84,14 +104,11 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			if strings.HasPrefix(path, "/s/") {
 				rest := path[3:]
 				slug := rest
-				remaining := "/"
 				if idx := strings.Index(rest, "/"); idx > 0 {
 					slug = rest[:idx]
-					remaining = rest[idx:]
 				}
 				if id := sm.resolve(slug); id != "" {
 					siteID = id
-					ctx.Request.URL.Path = remaining
 				}
 			}
 		}

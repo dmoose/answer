@@ -1,7 +1,8 @@
 FROM node:22-alpine AS ui-builder
 WORKDIR /app
 COPY . .
-RUN cd ui && npm install -g pnpm@9.7.0 && pnpm pre-install && pnpm build
+RUN cd ui && npm install -g pnpm@9.7.0 && pnpm pre-install && pnpm build \
+    && test -f /app/ui/build/index.html || (echo "FATAL: UI build produced no output" && exit 1)
 
 FROM golang:1.24-alpine AS golang-builder
 
@@ -16,7 +17,7 @@ WORKDIR ${BUILD_DIR}
 RUN apk --no-cache add build-base git bash \
     && CGO_ENABLED=0 go build \
        -tags "multisite" \
-       -ldflags="-X github.com/apache/answer/cmd.Version=multisite-dev -extldflags -static" \
+       -ldflags="-X github.com/apache/answer/cmd.Version=2.1.0-multisite -extldflags -static" \
        -o answer ./cmd/answer
 
 RUN chmod 755 answer && cp answer /usr/bin/answer

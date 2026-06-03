@@ -38,16 +38,23 @@ func SetSiteID(ctx context.Context, entities ...any) {
 		return
 	}
 	for _, e := range entities {
-		v := reflect.ValueOf(e)
-		if v.Kind() == reflect.Ptr {
-			v = v.Elem()
-		}
-		if v.Kind() != reflect.Struct {
-			continue
-		}
+		setSiteIDValue(reflect.ValueOf(e), siteID)
+	}
+}
+
+func setSiteIDValue(v reflect.Value, siteID string) {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	switch v.Kind() {
+	case reflect.Struct:
 		f := v.FieldByName("SiteID")
 		if f.IsValid() && f.CanSet() && f.Kind() == reflect.String {
 			f.SetString(siteID)
+		}
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			setSiteIDValue(v.Index(i), siteID)
 		}
 	}
 }

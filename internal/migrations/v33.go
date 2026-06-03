@@ -85,5 +85,15 @@ func addMultiSiteSupport(ctx context.Context, x *xorm.Engine) error {
 		log.Warnf("backfill user_site_role_rel: %v", err)
 	}
 
+	// Replace single-column unique indexes with composite (column, site_id)
+	uniqueFixups := []struct{ table, oldIdx string }{
+		{"tag", "UQE_tag_slug_name"},
+		{"config", "UQE_config_key"},
+		{"plugin_config", "UQE_plugin_config_plugin_slug_name"},
+	}
+	for _, f := range uniqueFixups {
+		_, _ = x.Context(ctx).Exec(fmt.Sprintf("DROP INDEX IF EXISTS `%s`", f.oldIdx))
+	}
+
 	return nil
 }

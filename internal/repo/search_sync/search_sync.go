@@ -100,6 +100,7 @@ func (p *PluginSyncer) convertAnswers(ctx context.Context, answers []*entity.Ans
 			Active:      answer.UpdatedAt.Unix(),
 			Score:       int64(answer.VoteCount),
 			HasAccepted: answer.Accepted == schema.AnswerAcceptedEnable,
+			SiteID:      answer.SiteID,
 		}
 		answerList = append(answerList, content)
 	}
@@ -134,6 +135,7 @@ func (p *PluginSyncer) convertQuestions(ctx context.Context, questions []*entity
 			Active:      question.UpdatedAt.Unix(),
 			Score:       int64(question.VoteCount),
 			HasAccepted: question.AcceptedAnswerID != "" && question.AcceptedAnswerID != "0",
+			SiteID:      question.SiteID,
 		}
 		questionList = append(questionList, content)
 	}

@@ -133,6 +133,7 @@ func (p *PluginSyncer) buildQuestionContents(ctx context.Context, questions []*e
 			Title:      q.Title,
 			Content:    strings.Join(parts, "\n\n"),
 			Metadata:   string(metaJSON),
+			SiteID:     q.SiteID,
 		})
 	}
 	return result, nil
@@ -190,6 +191,7 @@ func (p *PluginSyncer) buildAnswerContents(ctx context.Context, answers []*entit
 			Title:      question.Title,
 			Content:    strings.Join(parts, "\n\n"),
 			Metadata:   string(metaJSON),
+			SiteID:     a.SiteID,
 		})
 	}
 	return result, nil
