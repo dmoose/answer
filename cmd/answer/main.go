@@ -23,6 +23,7 @@ package main
 
 import (
 	answercmd "github.com/apache/answer/cmd"
+	_ "github.com/apache/answer/internal/plugins/fastgate_connector"
 )
 
 // main godoc

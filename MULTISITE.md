@@ -112,6 +112,35 @@ For site-aware plugins:
 - `SearchContent.SiteID` and `VectorSearchContent.SiteID` fields are populated during index sync
 - `plugin.SiteRoleRepo` interface available for role-aware plugins
 
+## Fastgate OIDC Connector
+
+A built-in Connector plugin for [fastgate](https://git.6-p.cc/catapulsion/fastgate) SSO is included at `internal/plugins/fastgate_connector/`. It implements the standard OIDC authorization code flow.
+
+### Setup
+
+1. Register Answer as an OIDC client in fastgate:
+   ```bash
+   fgctl oidc-client -create -name "Answer" \
+     -redirect-uri "https://answer.example.com/answer/api/v1/connector/redirect/fastgate-connector"
+   ```
+
+2. In Answer admin, go to Installed Plugins > Fastgate and configure:
+   - **Issuer URL** — fastgate base URL (e.g. `https://gate.example.com`)
+   - **Client ID** and **Client Secret** — from step 1
+
+3. To make fastgate the only login method, disable under Admin > Login:
+   - Allow new registrations — OFF
+   - Allow email registration — OFF
+   - Password login — OFF
+
+   The connector button remains and auto-creates accounts on first login regardless of these toggles.
+
+### Auth Flow
+
+Browser → Answer login → redirect to fastgate `/authorize` → magic link email → click → fastgate session → redirect back to Answer with auth code → Answer exchanges code for tokens via `/token` → fetches user info via `/userinfo` → creates/logs in user.
+
+Existing fastgate sessions enable true SSO — if already authenticated with fastgate (e.g. from another app), the login is instant with no email prompt. Answer logout clears the Answer session only; the fastgate session persists (standard SSO behavior).
+
 ## Known Limitations
 
 - **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs route group fix for true API-level content protection.
