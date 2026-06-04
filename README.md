@@ -14,6 +14,10 @@ To learn more about the project, visit [answer.apache.org](https://answer.apache
 [![Go Report Card](https://goreportcard.com/badge/github.com/apache/answer)](https://goreportcard.com/report/github.com/apache/answer)
 [![Discord](https://img.shields.io/badge/discord-chat-5865f2?logo=discord&logoColor=f5f5f5)](https://discord.gg/Jm7Y4cbUej)
 
+## Multi-Site Support (Fork)
+
+This fork adds Stack Exchange-style multi-tenancy: shared users across independent Q&A sites with per-site content, reputation, and roles. See [MULTISITE.md](MULTISITE.md) for details.
+
 ## Screenshots
 
 ![screenshot](docs/img/screenshot.png)
