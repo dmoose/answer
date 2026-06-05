@@ -145,7 +145,11 @@ Existing fastgate sessions enable true SSO — if already authenticated with fas
 
 - **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs route group fix for true API-level content protection.
 - **Network profile frontend** — API exists at `/network/user/profile`, no React page yet.
-- **Migration v33 error handling** — index creation errors are logged but not distinguished from unexpected failures.
+- **Migration v33 error handling** — column-add errors are logged but not distinguished from unexpected failures.
+- **Plugin config is effectively global** — `plugin_config.site_id` exists and `SavePluginConfig` writes per-site rows correctly, but the runtime applies plugin configs once at process startup with no site context, so per-site overrides are stored but never wired through to plugin behavior. Per-site plugin config requires a request-scoped re-apply that does not yet exist.
+- **Site role only escalates** — a user's per-site role takes effect only when it is more privileged than the global role; a site role cannot demote a global admin. By design (network admin overrides everywhere), but worth noting.
+- **Badge counting is network-wide** — `badge_award.site_id` records where a badge was earned, but threshold rules (e.g. "10 accepted answers") count across all sites. User reputation crosses sites by design; badges follow the same model.
+- **Single-instance site cache** — site routing reads an in-process slug→id map. Multi-instance deployments will serve stale routes after admin changes until each instance restarts or refreshes its cache.
 
 ## Future: Plugin Page Framework
 

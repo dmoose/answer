@@ -49,17 +49,17 @@ func (sm *SiteMiddleware) resolve(slug string) string {
 	return sm.cache[slug]
 }
 
-func (sm *SiteMiddleware) validSiteID(id string) bool {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	for _, v := range sm.cache {
-		if v == id {
-			return true
-		}
-	}
-	return false
-}
-
+// ResolveSite picks the active site from request identity in priority order:
+//
+//  1. Subdomain (product-a.example.com)
+//  2. /s/<slug>/... path prefix
+//  3. X-Site-Slug header — SPA bootstrap before the URL has /s/, validated
+//     against the known-sites cache like the other paths
+//  4. Fall back to the default site so the network is reachable before any
+//     sites are configured
+//
+// Host and path always win over headers so a browser cannot fetch another
+// site's content from the wrong domain.
 func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		path := ctx.Request.URL.Path
@@ -72,48 +72,34 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 
 		var siteID string
 
-		// 1. Explicit ID header (API clients) — validate against known sites
-		if h := ctx.GetHeader("X-Site-ID"); h != "" {
-			if sm.validSiteID(h) {
-				siteID = h
-			}
+		// 1. Subdomain
+		host := ctx.Request.Host
+		if idx := strings.LastIndex(host, ":"); idx > 0 {
+			host = host[:idx]
+		}
+		parts := strings.SplitN(host, ".", 2)
+		if len(parts) >= 2 && parts[0] != "www" {
+			siteID = sm.resolve(parts[0])
 		}
 
-		// 1b. Slug header (frontend before site ID is known)
+		// 2. Path prefix
+		if siteID == "" && strings.HasPrefix(path, "/s/") {
+			rest := path[3:]
+			slug := rest
+			if idx := strings.Index(rest, "/"); idx > 0 {
+				slug = rest[:idx]
+			}
+			siteID = sm.resolve(slug)
+		}
+
+		// 3. X-Site-Slug header (SPA bootstrap)
 		if siteID == "" {
 			if h := ctx.GetHeader("X-Site-Slug"); h != "" {
 				siteID = sm.resolve(h)
 			}
 		}
 
-		// 2. Subdomain: product-a.example.com
-		if siteID == "" {
-			host := ctx.Request.Host
-			if idx := strings.LastIndex(host, ":"); idx > 0 {
-				host = host[:idx]
-			}
-			parts := strings.SplitN(host, ".", 2)
-			if len(parts) >= 2 && parts[0] != "www" {
-				siteID = sm.resolve(parts[0])
-			}
-		}
-
-		// 3. Path prefix: /s/{slug} or /s/{slug}/...
-		if siteID == "" {
-			path := ctx.Request.URL.Path
-			if strings.HasPrefix(path, "/s/") {
-				rest := path[3:]
-				slug := rest
-				if idx := strings.Index(rest, "/"); idx > 0 {
-					slug = rest[:idx]
-				}
-				if id := sm.resolve(slug); id != "" {
-					siteID = id
-				}
-			}
-		}
-
-		// 4. Fallback to the default site
+		// 4. Default fallback
 		if siteID == "" {
 			siteID = sm.resolve("default")
 		}

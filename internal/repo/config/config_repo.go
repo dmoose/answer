@@ -141,41 +141,65 @@ func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *e
 func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string) (err error) {
 	siteID := multisite.SiteIDFromContext(ctx)
 
-	// Find the config row to update: site-specific first, then global
-	oldConfig := &entity.Config{}
-	var exist bool
 	if siteID != "" {
-		exist, err = cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(oldConfig)
+		// Site context: update the site override if present, else insert one.
+		// Never touch the global row from a site request.
+		row := &entity.Config{}
+		exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(row)
 		if err != nil {
 			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		}
+		if exist {
+			if _, err := cr.data.DB.Context(ctx).ID(row.ID).Update(&entity.Config{Value: value}); err != nil {
+				return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+			}
+			row.Value = value
+			cr.cacheConfig(ctx, key, row)
+			return nil
+		}
+		// Sanity-check the global key exists so we don't create orphans.
+		global := &entity.Config{}
+		globalExist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(global)
+		if err != nil {
+			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+		}
+		if !globalExist {
+			return errors.BadRequest(reason.ObjectNotFound)
+		}
+		override := &entity.Config{Key: key, Value: value, SiteID: siteID}
+		if _, err := cr.data.DB.Context(ctx).Insert(override); err != nil {
+			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+		}
+		cr.cacheConfig(ctx, key, override)
+		return nil
 	}
-	if !exist {
-		oldConfig = &entity.Config{}
-		exist, err = cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(oldConfig)
-		if err != nil {
-			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
+
+	// No site context: update the global default row.
+	row := &entity.Config{}
+	exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(row)
+	if err != nil {
+		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	if !exist {
 		return errors.BadRequest(reason.ObjectNotFound)
 	}
-
-	_, err = cr.data.DB.Context(ctx).ID(oldConfig.ID).Update(&entity.Config{Value: value})
-	if err != nil {
+	if _, err := cr.data.DB.Context(ctx).ID(row.ID).Update(&entity.Config{Value: value}); err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
+	row.Value = value
+	cr.cacheConfig(ctx, key, row)
+	return nil
+}
 
-	oldConfig.Value = value
-	cacheVal := oldConfig.JsonString()
+func (cr configRepo) cacheConfig(ctx context.Context, key string, c *entity.Config) {
 	prefix := cr.cachePrefix(ctx)
+	cacheVal := c.JsonString()
 	if err := cr.data.Cache.SetString(ctx,
 		constant.ConfigKEY2ContentCacheKeyPrefix+prefix+key, cacheVal, constant.ConfigCacheTime); err != nil {
 		log.Error(err)
 	}
 	if err := cr.data.Cache.SetString(ctx,
-		fmt.Sprintf("%s%s%d", constant.ConfigID2KEYCacheKeyPrefix, prefix, oldConfig.ID), cacheVal, constant.ConfigCacheTime); err != nil {
+		fmt.Sprintf("%s%s%d", constant.ConfigID2KEYCacheKeyPrefix, prefix, c.ID), cacheVal, constant.ConfigCacheTime); err != nil {
 		log.Error(err)
 	}
-	return
 }

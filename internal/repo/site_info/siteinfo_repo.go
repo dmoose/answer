@@ -27,6 +27,7 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/siteinfo_common"
 	"github.com/segmentfault/pacman/errors"
 	"github.com/segmentfault/pacman/log"
@@ -43,10 +44,15 @@ func NewSiteInfo(data *data.Data) siteinfo_common.SiteInfoRepo {
 	}
 }
 
-// SaveByType save site setting by type
+// SaveByType save site setting by type. From a site context, writes a per-site
+// override; from no site context, writes the global default. Never overwrites
+// the global row from inside a site request.
 func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *entity.SiteInfo) (err error) {
+	siteID := multisite.SiteIDFromContext(ctx)
+	data.SiteID = siteID
+
 	old := &entity.SiteInfo{}
-	exist, err := sr.data.DB.Context(ctx).Where(builder.Eq{"type": siteType}).Get(old)
+	exist, err := sr.data.DB.Context(ctx).Where("type = ? AND site_id = ?", siteType, siteID).Get(old)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -62,7 +68,8 @@ func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *e
 	return
 }
 
-// GetByType get site info by type
+// GetByType returns the per-site override when present, falling back to the
+// global default row.
 func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutCache ...bool) (siteInfo *entity.SiteInfo, exist bool, err error) {
 	if len(withoutCache) == 0 {
 		siteInfo = sr.getCache(ctx, siteType)
@@ -70,8 +77,21 @@ func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutC
 			return siteInfo, true, nil
 		}
 	}
+	siteID := multisite.SiteIDFromContext(ctx)
+	if siteID != "" {
+		siteInfo = &entity.SiteInfo{}
+		exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ?", siteType, siteID).Get(siteInfo)
+		if err != nil {
+			err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+			return nil, false, err
+		}
+		if exist {
+			sr.setCache(ctx, siteType, siteInfo)
+			return
+		}
+	}
 	siteInfo = &entity.SiteInfo{}
-	exist, err = sr.data.DB.Context(ctx).Where(builder.Eq{"type": siteType}).Get(siteInfo)
+	exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ''", siteType).Get(siteInfo)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		return nil, false, err
@@ -82,8 +102,15 @@ func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutC
 	return
 }
 
+func (sr *siteInfoRepo) cachePrefix(ctx context.Context) string {
+	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+		return siteID + ":"
+	}
+	return ""
+}
+
 func (sr *siteInfoRepo) getCache(ctx context.Context, siteType string) (siteInfo *entity.SiteInfo) {
-	siteInfoCache, exist, err := sr.data.Cache.GetString(ctx, constant.SiteInfoCacheKey+siteType)
+	siteInfoCache, exist, err := sr.data.Cache.GetString(ctx, constant.SiteInfoCacheKey+sr.cachePrefix(ctx)+siteType)
 	if err != nil {
 		return nil
 	}
@@ -98,7 +125,7 @@ func (sr *siteInfoRepo) getCache(ctx context.Context, siteType string) (siteInfo
 func (sr *siteInfoRepo) setCache(ctx context.Context, siteType string, siteInfo *entity.SiteInfo) {
 	siteInfoCache, _ := json.Marshal(siteInfo)
 	err := sr.data.Cache.SetString(ctx,
-		constant.SiteInfoCacheKey+siteType, string(siteInfoCache), constant.SiteInfoCacheTime)
+		constant.SiteInfoCacheKey+sr.cachePrefix(ctx)+siteType, string(siteInfoCache), constant.SiteInfoCacheTime)
 	if err != nil {
 		log.Error(err)
 	}

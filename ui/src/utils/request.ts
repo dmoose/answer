@@ -62,14 +62,14 @@ class Request {
         const lang = getCurrentLang();
         requestConfig.headers.set('Authorization', token);
         requestConfig.headers.set('Accept-Language', lang);
+        // Server resolves the site from host + /s/<slug> path. The header is
+        // only used by the SPA before the URL has a /s/<slug> prefix (root
+        // loads, install pages); it is validated against the known-sites
+        // cache server-side.
         const { currentSite } = currentSiteStore.getState();
-        if (currentSite?.id) {
-          requestConfig.headers.set('X-Site-ID', currentSite.id);
-        } else {
-          const slugMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
-          if (slugMatch) {
-            requestConfig.headers.set('X-Site-Slug', slugMatch[1]);
-          }
+        const slugMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
+        if (!slugMatch && currentSite?.slug) {
+          requestConfig.headers.set('X-Site-Slug', currentSite.slug);
         }
         return requestConfig;
       },
