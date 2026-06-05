@@ -27,6 +27,7 @@ import (
 
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	answercommon "github.com/apache/answer/internal/service/answer_common"
 	"github.com/apache/answer/internal/service/comment"
@@ -375,6 +376,28 @@ func (c *MCPController) MCPSemanticSearchHandler() func(ctx context.Context, req
 		if err != nil {
 			log.Errorf("semantic search failed: %v", err)
 			return mcp.NewToolResultText("Semantic search is not available. Embedding may not be configured."), nil
+		}
+		// Defensive cross-site filter: drop results whose SiteID is set and
+		// disagrees with the active site. Empty SiteID is from plugins that
+		// predate multi-site and is let through with a warning so the search
+		// still returns something; those plugins should be upgraded.
+		if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+			kept := results[:0]
+			droppedLegacy := 0
+			for _, r := range results {
+				if r.SiteID == "" {
+					droppedLegacy++
+					kept = append(kept, r)
+					continue
+				}
+				if r.SiteID == siteID {
+					kept = append(kept, r)
+				}
+			}
+			if droppedLegacy > 0 {
+				log.Warnf("semantic search: %d result(s) without SiteID — vector search plugin needs multi-site upgrade", droppedLegacy)
+			}
+			results = kept
 		}
 		if len(results) == 0 {
 			return mcp.NewToolResultText("No semantically similar content found."), nil

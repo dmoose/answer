@@ -38,6 +38,10 @@ type VectorSearchResult struct {
 	Metadata string `json:"metadata"`
 	// Score is the cosine similarity score (0-1).
 	Score float64 `json:"score"`
+	// SiteID is the site that owns the matched content. Plugins SHOULD populate
+	// this from the indexed VectorSearchContent.SiteID so the core can verify
+	// results never leak across sites. Empty for plugins predating multi-site.
+	SiteID string `json:"site_id,omitempty"`
 }
 
 // VectorSearchContent is the document structure passed to plugins for indexing.
@@ -101,6 +105,12 @@ type VectorSearch interface {
 	// SearchSimilar performs a semantic similarity search.
 	// The plugin is responsible for embedding the query text and searching its vector store.
 	// Returns up to topK results sorted by similarity score (descending).
+	//
+	// Multi-site: in a multi-site deployment, plugins SHOULD scope the search to
+	// the active site (multisite.SiteIDFromContext(ctx)) when set, either by
+	// filtering at the vector store level or by populating VectorSearchResult.SiteID
+	// so the core can post-filter. Cross-site results otherwise leak under the
+	// active site's URL composition.
 	SearchSimilar(ctx context.Context, query string, topK int) ([]VectorSearchResult, error)
 
 	// UpdateContent upserts a single document in the vector store.
