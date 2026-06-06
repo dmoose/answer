@@ -109,6 +109,7 @@ var migrations = []Migration{
 	NewMigration("v1.8.1", "ai feat", aiFeat, true),
 	NewMigration("v2.0.1", "change avatar type to text", updateAvatarType, false),
 	NewMigration("v2.1.0", "add multi-site support", addMultiSiteSupport, true),
+	NewMigration("v2.2.0", "add network directory (profile, projects, tags)", addNetworkDirectory, false),
 }
 
 func GetMigrations() []Migration {

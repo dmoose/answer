@@ -82,6 +82,10 @@ var (
 		&entity.Site{},
 		&entity.UserSiteRank{},
 		&entity.UserSiteRoleRel{},
+		&entity.NetworkProfile{},
+		&entity.NetworkProject{},
+		&entity.ProfileTag{},
+		&entity.UserProfileTag{},
 	}
 
 	roles = []*entity.Role{
