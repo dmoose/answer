@@ -32,9 +32,13 @@ import (
 	"github.com/apache/answer/internal/repo/export"
 	"github.com/apache/answer/internal/repo/file_record"
 	"github.com/apache/answer/internal/repo/limit"
+	"github.com/apache/answer/internal/repo/member_directory"
 	"github.com/apache/answer/internal/repo/meta"
+	"github.com/apache/answer/internal/repo/network_profile"
+	"github.com/apache/answer/internal/repo/network_project"
 	notification2 "github.com/apache/answer/internal/repo/notification"
 	"github.com/apache/answer/internal/repo/plugin_config"
+	"github.com/apache/answer/internal/repo/profile_tag"
 	"github.com/apache/answer/internal/repo/question"
 	"github.com/apache/answer/internal/repo/rank"
 	"github.com/apache/answer/internal/repo/reason"
@@ -77,6 +81,7 @@ import (
 	"github.com/apache/answer/internal/service/importer"
 	meta2 "github.com/apache/answer/internal/service/meta"
 	"github.com/apache/answer/internal/service/meta_common"
+	"github.com/apache/answer/internal/service/network_directory"
 	"github.com/apache/answer/internal/service/noticequeue"
 	"github.com/apache/answer/internal/service/notification"
 	"github.com/apache/answer/internal/service/notification_common"
@@ -279,11 +284,20 @@ func initApplication(debug bool, serverConf *conf.Server, dbConf *data.Database,
 	aiConversationAdminController := controller_admin.NewAIConversationAdminController(aiConversationService, featureToggleService)
 	siteRepo := site.NewSiteRepo(dataData)
 	siteService := site2.NewSiteService(siteRepo, siteRoleRepo)
-	networkProfileService := site2.NewNetworkProfileService(userCommon, siteRepo, siteRankRepo)
+	networkProfileRepo := network_profile.NewNetworkProfileRepo(dataData)
+	networkProjectRepo := network_project.NewNetworkProjectRepo(dataData)
+	profileTagRepo := profile_tag.NewProfileTagRepo(dataData)
+	networkProfileService := site2.NewNetworkProfileService(userCommon, siteRepo, siteRankRepo, networkProfileRepo, networkProjectRepo, profileTagRepo)
 	siteController := controller.NewSiteController(siteService, networkProfileService)
 	siteMiddleware := middleware.NewSiteMiddleware(engine)
 	siteAdminController := controller_admin.NewSiteAdminController(siteService, siteMiddleware)
-	answerAPIRouter := router.NewAnswerAPIRouter(langController, userController, commentController, reportController, voteController, tagController, followController, collectionController, questionController, answerController, searchController, revisionController, rankController, userAdminController, reasonController, themeController, siteInfoController, controllerSiteInfoController, notificationController, dashboardController, uploadController, activityController, roleController, pluginController, permissionController, userPluginController, reviewController, metaController, badgeController, controller_adminBadgeController, adminAPIKeyController, aiController, aiConversationController, aiConversationAdminController, mcpController, siteController, siteAdminController)
+	profileEditService := network_directory.NewProfileEditService(networkProfileRepo, networkProjectRepo, profileTagRepo)
+	profileTagService := network_directory.NewProfileTagService(profileTagRepo)
+	memberDirectoryRepo := member_directory.NewMemberDirectoryRepo(dataData)
+	memberDirectoryService := network_directory.NewMemberDirectoryService(memberDirectoryRepo, profileTagRepo)
+	memberDirectoryController := controller.NewMemberDirectoryController(profileEditService, profileTagService, memberDirectoryService)
+	profileTagAdminController := controller_admin.NewProfileTagAdminController(profileTagService)
+	answerAPIRouter := router.NewAnswerAPIRouter(langController, userController, commentController, reportController, voteController, tagController, followController, collectionController, questionController, answerController, searchController, revisionController, rankController, userAdminController, reasonController, themeController, siteInfoController, controllerSiteInfoController, notificationController, dashboardController, uploadController, activityController, roleController, pluginController, permissionController, userPluginController, reviewController, metaController, badgeController, controller_adminBadgeController, adminAPIKeyController, aiController, aiConversationController, aiConversationAdminController, mcpController, siteController, siteAdminController, memberDirectoryController, profileTagAdminController)
 	swaggerRouter := router.NewSwaggerRouter(swaggerConf)
 	uiRouter := router.NewUIRouter(controllerSiteInfoController, siteInfoCommonService)
 	authUserMiddleware := middleware.NewAuthUserMiddleware(authService, siteInfoCommonService)

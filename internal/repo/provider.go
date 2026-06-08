@@ -37,9 +37,13 @@ import (
 	"github.com/apache/answer/internal/repo/export"
 	"github.com/apache/answer/internal/repo/file_record"
 	"github.com/apache/answer/internal/repo/limit"
+	"github.com/apache/answer/internal/repo/member_directory"
 	"github.com/apache/answer/internal/repo/meta"
+	"github.com/apache/answer/internal/repo/network_profile"
+	"github.com/apache/answer/internal/repo/network_project"
 	"github.com/apache/answer/internal/repo/notification"
 	"github.com/apache/answer/internal/repo/plugin_config"
+	"github.com/apache/answer/internal/repo/profile_tag"
 	"github.com/apache/answer/internal/repo/question"
 	"github.com/apache/answer/internal/repo/rank"
 	"github.com/apache/answer/internal/repo/reason"
@@ -117,4 +121,8 @@ var ProviderSetRepo = wire.NewSet(
 	site.NewSiteRepo,
 	rank.NewUserSiteRankRepo,
 	role.NewUserSiteRoleRelRepo,
+	network_profile.NewNetworkProfileRepo,
+	network_project.NewNetworkProjectRepo,
+	profile_tag.NewProfileTagRepo,
+	member_directory.NewMemberDirectoryRepo,
 )

@@ -64,6 +64,8 @@ type AnswerAPIRouter struct {
 	mcpController                 *controller.MCPController
 	siteController                *controller.SiteController
 	siteAdminController           *controller_admin.SiteAdminController
+	memberDirectoryController     *controller.MemberDirectoryController
+	profileTagAdminController     *controller_admin.ProfileTagAdminController
 }
 
 func NewAnswerAPIRouter(
@@ -104,6 +106,8 @@ func NewAnswerAPIRouter(
 	mcpController *controller.MCPController,
 	siteController *controller.SiteController,
 	siteAdminController *controller_admin.SiteAdminController,
+	memberDirectoryController *controller.MemberDirectoryController,
+	profileTagAdminController *controller_admin.ProfileTagAdminController,
 ) *AnswerAPIRouter {
 	return &AnswerAPIRouter{
 		langController:                langController,
@@ -143,6 +147,8 @@ func NewAnswerAPIRouter(
 		mcpController:                 mcpController,
 		siteController:                siteController,
 		siteAdminController:           siteAdminController,
+		memberDirectoryController:     memberDirectoryController,
+		profileTagAdminController:     profileTagAdminController,
 	}
 }
 
@@ -224,6 +230,11 @@ func (a *AnswerAPIRouter) RegisterUnAuthAnswerAPIRouter(r *gin.RouterGroup) {
 	// multi-site
 	r.GET("/sites", a.siteController.GetSiteList)
 	r.GET("/network/user/profile", a.siteController.GetNetworkProfile)
+
+	// network directory (public reads). Profile read itself is /network/user/profile
+	// served by siteController above; this group covers the catalog and search.
+	r.GET("/network/tags", a.memberDirectoryController.ListTags)
+	r.GET("/network/members", a.memberDirectoryController.ListMembers)
 }
 
 func (a *AnswerAPIRouter) RegisterAuthUserWithAnyStatusAnswerAPIRouter(r *gin.RouterGroup) {
@@ -341,6 +352,13 @@ func (a *AnswerAPIRouter) RegisterAnswerAPIRouter(r *gin.RouterGroup) {
 	r.GET("/ai/conversation/page", a.aiConversationController.GetConversationList)
 	r.GET("/ai/conversation", a.aiConversationController.GetConversationDetail)
 	r.POST("/ai/conversation/vote", a.aiConversationController.VoteRecord)
+
+	// network directory (member writes)
+	r.PUT("/network/profile", a.memberDirectoryController.UpdateProfile)
+	r.PUT("/network/me/tags", a.memberDirectoryController.SetTags)
+	r.POST("/network/projects", a.memberDirectoryController.CreateProject)
+	r.PUT("/network/projects/:id", a.memberDirectoryController.UpdateProject)
+	r.DELETE("/network/projects/:id", a.memberDirectoryController.DeleteProject)
 }
 
 func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
@@ -454,4 +472,8 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	r.GET("/sites", a.siteAdminController.GetSiteList)
 	r.PUT("/site/role", a.siteAdminController.SetUserSiteRole)
 	r.GET("/site/role", a.siteAdminController.GetUserSiteRole)
+
+	// network directory tag management
+	r.POST("/network/tags", a.profileTagAdminController.CreateTag)
+	r.PUT("/network/tags/:id", a.profileTagAdminController.UpdateTag)
 }

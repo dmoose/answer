@@ -43,6 +43,7 @@ import (
 	"github.com/apache/answer/internal/service/file_record"
 	"github.com/apache/answer/internal/service/follow"
 	"github.com/apache/answer/internal/service/importer"
+	"github.com/apache/answer/internal/service/network_directory"
 	"github.com/apache/answer/internal/service/meta"
 	metacommon "github.com/apache/answer/internal/service/meta_common"
 	"github.com/apache/answer/internal/service/noticequeue"
@@ -141,4 +142,7 @@ var ProviderSetService = wire.NewSet(
 	vector_sync.NewService,
 	site.NewSiteService,
 	site.NewNetworkProfileService,
+	network_directory.NewProfileEditService,
+	network_directory.NewProfileTagService,
+	network_directory.NewMemberDirectoryService,
 )
