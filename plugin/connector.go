@@ -19,6 +19,8 @@
 
 package plugin
 
+import "context"
+
 type Connector interface {
 	Base
 
@@ -59,6 +61,15 @@ type ExternalLoginUserInfo struct {
 	Avatar string
 	// optional. The original user information provided by the third-party login platform
 	MetaInfo string
+}
+
+// ConnectorAfterLogin is an optional interface a Connector can implement to be
+// notified after a successful login binds the external identity to a local
+// user. Useful for IDPs that maintain a directory of (sub, app_user_id) pairs
+// (e.g. fastgate) and need the local ID reported back. The hook is called once
+// per login; errors are logged and do not block the user from signing in.
+type ConnectorAfterLogin interface {
+	AfterLogin(ctx context.Context, externalID, localUserID string) error
 }
 
 var (

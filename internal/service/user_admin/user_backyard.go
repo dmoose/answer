@@ -163,6 +163,14 @@ func (us *UserAdminService) UpdateUserStatus(ctx context.Context, req *schema.Up
 		return err
 	}
 
+	// Atomically invalidate any active sessions for revoked statuses. Without
+	// this the user's cached UserCacheInfo keeps satisfying the auth middleware
+	// for the rest of the 7-day token cache TTL, so a deactivated user keeps
+	// access until either their token expires or they explicitly log out.
+	if req.IsDeleted() || req.IsSuspended() || req.IsInactive() {
+		us.authService.RemoveUserAllTokens(ctx, userInfo.ID)
+	}
+
 	// remove all content that user created, such as question, answer, comment, etc.
 	if req.RemoveAllContent {
 		us.removeAllUserCreatedContent(ctx, userInfo.ID)

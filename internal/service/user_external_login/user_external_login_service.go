@@ -118,6 +118,7 @@ func (us *UserExternalLoginService) ExternalLogin(
 			if err != nil {
 				log.Error(err)
 			}
+			callConnectorAfterLogin(ctx, externalUserInfo.Provider, externalUserInfo.ExternalID, oldUserInfo.ID)
 			accessToken, _, err := us.userCommonService.CacheLoginUserInfo(
 				ctx, oldUserInfo.ID, newMailStatus, oldUserInfo.Status, oldExternalLoginUserInfo.ExternalID)
 			return &schema.UserExternalLoginResp{AccessToken: accessToken}, err
@@ -175,9 +176,31 @@ func (us *UserExternalLoginService) ExternalLogin(
 		log.Errorf("set default user notification config failed, err: %v", err)
 	}
 
+	callConnectorAfterLogin(ctx, externalUserInfo.Provider, externalUserInfo.ExternalID, oldUserInfo.ID)
 	accessToken, _, err := us.userCommonService.CacheLoginUserInfo(
 		ctx, oldUserInfo.ID, newMailStatus, oldUserInfo.Status, oldExternalLoginUserInfo.ExternalID)
 	return &schema.UserExternalLoginResp{AccessToken: accessToken}, err
+}
+
+// callConnectorAfterLogin fires the optional plugin.ConnectorAfterLogin hook
+// on the matching connector. Errors are logged; they never block login.
+func callConnectorAfterLogin(ctx context.Context, provider, externalID, localUserID string) {
+	if provider == "" || externalID == "" || localUserID == "" {
+		return
+	}
+	_ = plugin.CallConnector(func(c plugin.Connector) error {
+		if c.ConnectorSlugName() != provider {
+			return nil
+		}
+		hook, ok := c.(plugin.ConnectorAfterLogin)
+		if !ok {
+			return nil
+		}
+		if err := hook.AfterLogin(ctx, externalID, localUserID); err != nil {
+			log.Errorf("connector %s AfterLogin: %v", provider, err)
+		}
+		return nil
+	})
 }
 
 func (us *UserExternalLoginService) registerNewUser(ctx context.Context,

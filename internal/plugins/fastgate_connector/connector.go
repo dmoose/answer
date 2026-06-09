@@ -1,14 +1,18 @@
 package fastgate_connector
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/apache/answer/plugin"
+	"github.com/segmentfault/pacman/log"
 )
 
 type Connector struct {
@@ -186,4 +190,45 @@ func (c *Connector) ConfigReceiver(config []byte) error {
 	}
 	c.Config = conf
 	return nil
+}
+
+// AfterLogin reports the Answer user_id back to fastgate's directory so the
+// IDP can resolve cross-app references (e.g. "find this user in Zulip") and
+// fan deactivations out to the right local account. Best-effort: errors are
+// logged but never block the user signing in.
+func (c *Connector) AfterLogin(ctx context.Context, externalID, localUserID string) error {
+	if c.Config == nil || c.Config.Issuer == "" || c.Config.ClientID == "" {
+		return nil
+	}
+	endpoint := fmt.Sprintf("%s/directory/users/%s/apps/%s/identity",
+		strings.TrimRight(c.Config.Issuer, "/"),
+		url.PathEscape(externalID),
+		url.PathEscape(c.Config.ClientID))
+
+	body, err := json.Marshal(map[string]string{"app_user_id": localUserID})
+	if err != nil {
+		return fmt.Errorf("encode identity body: %w", err)
+	}
+
+	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(rctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build identity request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(c.Config.ClientID, c.Config.ClientSecret)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("post identity: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Warnf("fastgate directory identity report rejected (%d): %s", resp.StatusCode, respBody)
+	return fmt.Errorf("identity report status %d", resp.StatusCode)
 }
