@@ -44,6 +44,7 @@ import {
   Answers,
   Votes,
   Badges,
+  NetworkProfile,
 } from './components';
 
 const Personal: FC = () => {
@@ -139,6 +140,7 @@ const Personal: FC = () => {
 
           {tabName === 'overview' && (
             <>
+              <NetworkProfile userId={userInfo?.id} />
               <h5 className="mb-3">{t('stats')}</h5>
               {userInfo?.created_at && (
                 <div className="text-secondary">

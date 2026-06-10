@@ -29,6 +29,7 @@ import Comments from './Comments';
 import Votes from './Votes';
 import Answers from './Answers';
 import Badges from './Badges';
+import NetworkProfile from './NetworkProfile';
 
 export {
   Alert,
@@ -43,4 +44,5 @@ export {
   Votes,
   Answers,
   Badges,
+  NetworkProfile,
 };

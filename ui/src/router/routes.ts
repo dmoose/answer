@@ -162,6 +162,11 @@ const routes: RouteNode[] = [
               return guard.activated();
             },
           },
+          // network directory (multisite build)
+          {
+            path: 'members',
+            page: 'pages/Members',
+          },
           // for users
           {
             path: 'users',
@@ -201,6 +206,14 @@ const routes: RouteNode[] = [
               {
                 path: 'interface',
                 page: 'pages/Users/Settings/Interface',
+              },
+              {
+                path: 'network',
+                page: 'pages/Users/Settings/Network',
+              },
+              {
+                path: 'projects',
+                page: 'pages/Users/Settings/Projects',
               },
               {
                 path: ':slug_name',
