@@ -362,20 +362,20 @@ type SiteSeoResp SiteSeoReq
 
 // SiteInfoResp get site info response
 type SiteInfoResp struct {
-	General       *SiteGeneralResp           `json:"general"`
-	Interface     *SiteInterfaceSettingsResp `json:"interface"`
-	UsersSettings *SiteUsersSettingsResp     `json:"users_settings"`
-	Branding      *SiteBrandingResp          `json:"branding"`
-	Login         *SiteLoginResp             `json:"login"`
-	Theme         *SiteThemeResp             `json:"theme"`
-	CustomCssHtml *SiteCustomCssHTMLResp     `json:"custom_css_html"`
-	SiteSeo       *SiteSeoResp               `json:"site_seo"`
-	SiteUsers     *SiteUsersResp             `json:"site_users"`
-	Advanced      *SiteAdvancedResp          `json:"site_advanced"`
-	Questions     *SiteQuestionsResp         `json:"site_questions"`
-	Tags          *SiteTagsResp              `json:"site_tags"`
-	Legal         *SiteLegalSimpleResp       `json:"site_legal"`
-	Security      *SiteSecurityResp          `json:"site_security"`
+	General          *SiteGeneralResp           `json:"general"`
+	Interface        *SiteInterfaceSettingsResp `json:"interface"`
+	UsersSettings    *SiteUsersSettingsResp     `json:"users_settings"`
+	Branding         *SiteBrandingResp          `json:"branding"`
+	Login            *SiteLoginResp             `json:"login"`
+	Theme            *SiteThemeResp             `json:"theme"`
+	CustomCssHtml    *SiteCustomCssHTMLResp     `json:"custom_css_html"`
+	SiteSeo          *SiteSeoResp               `json:"site_seo"`
+	SiteUsers        *SiteUsersResp             `json:"site_users"`
+	Advanced         *SiteAdvancedResp          `json:"site_advanced"`
+	Questions        *SiteQuestionsResp         `json:"site_questions"`
+	Tags             *SiteTagsResp              `json:"site_tags"`
+	Legal            *SiteLegalSimpleResp       `json:"site_legal"`
+	Security         *SiteSecurityResp          `json:"site_security"`
 	Version          string                     `json:"version"`
 	Revision         string                     `json:"revision"`
 	AIEnabled        bool                       `json:"ai_enabled"`

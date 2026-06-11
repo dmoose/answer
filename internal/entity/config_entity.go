@@ -29,7 +29,7 @@ import (
 
 // Config config
 type Config struct {
-	ID    int    `xorm:"not null pk autoincr INT(11) id"`
+	ID     int    `xorm:"not null pk autoincr INT(11) id"`
 	Key    string `xorm:"VARCHAR(128) UNIQUE(uq_config_key_site) key"`
 	Value  string `xorm:"TEXT value"`
 	SiteID string `xorm:"not null default '' VARCHAR(36) INDEX UNIQUE(uq_config_key_site) site_id"`

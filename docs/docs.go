@@ -11980,6 +11980,9 @@ const docTemplate = `{
                 "custom_css_html": {
                     "$ref": "#/definitions/schema.SiteCustomCssHTMLResp"
                 },
+                "directory_enabled": {
+                    "type": "boolean"
+                },
                 "general": {
                     "$ref": "#/definitions/schema.SiteGeneralResp"
                 },

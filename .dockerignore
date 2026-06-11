@@ -2,3 +2,6 @@ ui/node_modules
 ui/build
 .git
 answer
+answer-dev
+tmp/
+.github/

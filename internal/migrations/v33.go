@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package migrations
 
 import (
@@ -71,8 +90,8 @@ func addMultiSiteSupport(ctx context.Context, x *xorm.Engine) error {
 	}
 
 	_, err = x.Context(ctx).Exec(`
-		INSERT INTO user_site_rank (user_id, site_id, ` + "`rank`" + `, created_at, updated_at)
-		SELECT id, ?, ` + "`rank`" + `, NOW(), NOW() FROM ` + "`user`" + ` WHERE ` + "`rank`" + ` > 0`,
+		INSERT INTO user_site_rank (user_id, site_id, `+"`rank`"+`, created_at, updated_at)
+		SELECT id, ?, `+"`rank`"+`, NOW(), NOW() FROM `+"`user`"+` WHERE `+"`rank`"+` > 0`,
 		defaultSite.ID)
 	if err != nil {
 		log.Warnf("backfill user_site_rank: %v", err)

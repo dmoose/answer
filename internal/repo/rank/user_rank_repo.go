@@ -24,9 +24,9 @@ import (
 
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/pager"
-	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/config"
 	"github.com/apache/answer/internal/service/rank"
 	"github.com/apache/answer/plugin"

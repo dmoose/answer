@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package fastgate_connector
 
 import (
@@ -92,7 +111,7 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	if err != nil {
 		return userInfo, fmt.Errorf("token exchange: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -118,7 +137,7 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	if err != nil {
 		return userInfo, fmt.Errorf("userinfo request: %w", err)
 	}
-	defer uiResp.Body.Close()
+	defer func() { _ = uiResp.Body.Close() }()
 
 	var claims struct {
 		Sub               string `json:"sub"`
@@ -223,7 +242,7 @@ func (c *Connector) AfterLogin(ctx context.Context, externalID, localUserID stri
 	if err != nil {
 		return fmt.Errorf("post identity: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil

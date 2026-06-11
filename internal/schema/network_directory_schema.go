@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package schema
 
 // ProfileExternalLink is one entry in a user's self-attested external links list.
@@ -29,13 +48,13 @@ type ProfileProjectInfo struct {
 
 // NetworkProfileUpdateReq is the body for PUT /network/profile (own profile only).
 type NetworkProfileUpdateReq struct {
-	UserID              string              `json:"-"`
-	Headline            string              `json:"headline" validate:"max=255"`
-	Pronouns            string              `json:"pronouns" validate:"max=64"`
-	Timezone            string              `json:"timezone" validate:"max=64"`
-	OpenToMentoring     bool                `json:"open_to_mentoring"`
-	OpenToCollaboration bool                `json:"open_to_collaboration"`
-	OpenToHire          bool                `json:"open_to_hire"`
+	UserID              string                `json:"-"`
+	Headline            string                `json:"headline" validate:"max=255"`
+	Pronouns            string                `json:"pronouns" validate:"max=64"`
+	Timezone            string                `json:"timezone" validate:"max=64"`
+	OpenToMentoring     bool                  `json:"open_to_mentoring"`
+	OpenToCollaboration bool                  `json:"open_to_collaboration"`
+	OpenToHire          bool                  `json:"open_to_hire"`
 	ExternalLinks       []ProfileExternalLink `json:"external_links" validate:"max=10,dive"`
 }
 
@@ -83,17 +102,17 @@ type DirectorySearchReq struct {
 
 // DirectoryMember is one card in the directory list.
 type DirectoryMember struct {
-	UserID              string          `json:"user_id"`
-	Username            string          `json:"username"`
-	DisplayName         string          `json:"display_name"`
-	Avatar              string          `json:"avatar"`
-	Reputation          int             `json:"reputation"`
-	Headline            string          `json:"headline"`
-	Pronouns            string          `json:"pronouns"`
-	Timezone            string          `json:"timezone"`
-	OpenToMentoring     bool            `json:"open_to_mentoring"`
-	OpenToCollaboration bool            `json:"open_to_collaboration"`
-	OpenToHire          bool            `json:"open_to_hire"`
+	UserID              string            `json:"user_id"`
+	Username            string            `json:"username"`
+	DisplayName         string            `json:"display_name"`
+	Avatar              string            `json:"avatar"`
+	Reputation          int               `json:"reputation"`
+	Headline            string            `json:"headline"`
+	Pronouns            string            `json:"pronouns"`
+	Timezone            string            `json:"timezone"`
+	OpenToMentoring     bool              `json:"open_to_mentoring"`
+	OpenToCollaboration bool              `json:"open_to_collaboration"`
+	OpenToHire          bool              `json:"open_to_hire"`
 	Tags                []*ProfileTagInfo `json:"tags"`
 }
 

@@ -25,11 +25,11 @@ import (
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/data"
-	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/activity_common"
 	answercommon "github.com/apache/answer/internal/service/answer_common"
