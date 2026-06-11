@@ -23,11 +23,13 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, useMatch } from 'react-router-dom';
 
 import { useGetUserPluginList } from '@/services';
+import { featuresControlStore } from '@/stores';
 
 const Index: FC = () => {
   const { t } = useTranslation('translation', { keyPrefix: 'settings.nav' });
   const settingMatch = useMatch('/users/settings/:setting');
   const { data } = useGetUserPluginList();
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
 
   return (
     <Nav variant="pills" className="flex-column">
@@ -47,12 +49,16 @@ const Index: FC = () => {
       <NavLink className="nav-link" to="/users/settings/interface">
         {t('interface')}
       </NavLink>
-      <NavLink className="nav-link" to="/users/settings/network">
-        Network profile
-      </NavLink>
-      <NavLink className="nav-link" to="/users/settings/projects">
-        Projects
-      </NavLink>
+      {directoryEnabled && (
+        <>
+          <NavLink className="nav-link" to="/users/settings/network">
+            Network profile
+          </NavLink>
+          <NavLink className="nav-link" to="/users/settings/projects">
+            Projects
+          </NavLink>
+        </>
+      )}
       {data?.map((item) => {
         return (
           <NavLink

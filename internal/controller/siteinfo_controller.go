@@ -25,6 +25,7 @@ import (
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/schema"
+	"github.com/apache/answer/internal/service/service_config"
 	"github.com/apache/answer/internal/service/siteinfo_common"
 	"github.com/gin-gonic/gin"
 	"github.com/segmentfault/pacman/log"
@@ -32,12 +33,17 @@ import (
 
 type SiteInfoController struct {
 	siteInfoService siteinfo_common.SiteInfoCommonService
+	serviceConfig   *service_config.ServiceConfig
 }
 
 // NewSiteInfoController new site info controller.
-func NewSiteInfoController(siteInfoService siteinfo_common.SiteInfoCommonService) *SiteInfoController {
+func NewSiteInfoController(
+	siteInfoService siteinfo_common.SiteInfoCommonService,
+	serviceConfig *service_config.ServiceConfig,
+) *SiteInfoController {
 	return &SiteInfoController{
 		siteInfoService: siteInfoService,
+		serviceConfig:   serviceConfig,
 	}
 }
 
@@ -116,6 +122,10 @@ func (sc *SiteInfoController) GetSiteInfo(ctx *gin.Context) {
 
 	if mcpConf, err := sc.siteInfoService.GetSiteMCP(ctx); err == nil {
 		resp.MCPEnabled = mcpConf.Enabled
+	}
+
+	if sc.serviceConfig != nil {
+		resp.DirectoryEnabled = sc.serviceConfig.DirectoryEnabled
 	}
 
 	handler.HandleResponse(ctx, nil, resp)

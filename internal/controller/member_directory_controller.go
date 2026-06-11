@@ -3,9 +3,12 @@ package controller
 import (
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"
+	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/network_directory"
+	"github.com/apache/answer/internal/service/service_config"
 	"github.com/gin-gonic/gin"
+	"github.com/segmentfault/pacman/errors"
 )
 
 // MemberDirectoryController hosts the public-read and member-write endpoints
@@ -13,27 +16,47 @@ import (
 // updates (profile fields, tag set, projects). The extended-profile read
 // itself stays on SiteController.GetNetworkProfile so the existing
 // /network/user/profile route returns one assembled payload.
+//
+// All handlers short-circuit with 404 when DirectoryEnabled is false in
+// service config, so a deployment that doesn't want the directory feature
+// presents as if these endpoints don't exist at all.
 type MemberDirectoryController struct {
 	editService      *network_directory.ProfileEditService
 	tagService       *network_directory.ProfileTagService
 	directoryService *network_directory.MemberDirectoryService
+	serviceConfig    *service_config.ServiceConfig
 }
 
 func NewMemberDirectoryController(
 	editService *network_directory.ProfileEditService,
 	tagService *network_directory.ProfileTagService,
 	directoryService *network_directory.MemberDirectoryService,
+	serviceConfig *service_config.ServiceConfig,
 ) *MemberDirectoryController {
 	return &MemberDirectoryController{
 		editService:      editService,
 		tagService:       tagService,
 		directoryService: directoryService,
+		serviceConfig:    serviceConfig,
 	}
+}
+
+// disabled returns true and writes a 404 response when the directory feature
+// is off. Each handler calls this first.
+func (mc *MemberDirectoryController) disabled(ctx *gin.Context) bool {
+	if mc.serviceConfig != nil && mc.serviceConfig.DirectoryEnabled {
+		return false
+	}
+	handler.HandleResponse(ctx, errors.NotFound(reason.ObjectNotFound), nil)
+	return true
 }
 
 // ListTags returns the active tag catalog. Optional `kind` query (1=skill,
 // 2=interest, 3=both) narrows the list for the picker UIs.
 func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	kind := 0
 	switch ctx.Query("kind") {
 	case "1":
@@ -49,6 +72,9 @@ func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
 
 // ListMembers runs the faceted directory query and returns a page of cards.
 func (mc *MemberDirectoryController) ListMembers(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	req := &schema.DirectorySearchReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
@@ -58,6 +84,9 @@ func (mc *MemberDirectoryController) ListMembers(ctx *gin.Context) {
 }
 
 func (mc *MemberDirectoryController) UpdateProfile(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	req := &schema.NetworkProfileUpdateReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
@@ -68,6 +97,9 @@ func (mc *MemberDirectoryController) UpdateProfile(ctx *gin.Context) {
 }
 
 func (mc *MemberDirectoryController) SetTags(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	req := &schema.NetworkSetProfileTagsReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
@@ -78,6 +110,9 @@ func (mc *MemberDirectoryController) SetTags(ctx *gin.Context) {
 }
 
 func (mc *MemberDirectoryController) CreateProject(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	req := &schema.NetworkProjectCreateReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
@@ -88,6 +123,9 @@ func (mc *MemberDirectoryController) CreateProject(ctx *gin.Context) {
 }
 
 func (mc *MemberDirectoryController) UpdateProject(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	req := &schema.NetworkProjectUpdateReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
@@ -99,6 +137,9 @@ func (mc *MemberDirectoryController) UpdateProject(ctx *gin.Context) {
 }
 
 func (mc *MemberDirectoryController) DeleteProject(ctx *gin.Context) {
+	if mc.disabled(ctx) {
+		return
+	}
 	id := ctx.Param("id")
 	userID := middleware.GetLoginUserIDFromContext(ctx)
 	err := mc.editService.DeleteProject(ctx, id, userID)

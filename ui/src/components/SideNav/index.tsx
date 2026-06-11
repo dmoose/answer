@@ -22,7 +22,12 @@ import { Nav } from 'react-bootstrap';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { loggedUserInfoStore, sideNavStore, aiControlStore } from '@/stores';
+import {
+  loggedUserInfoStore,
+  sideNavStore,
+  aiControlStore,
+  featuresControlStore,
+} from '@/stores';
 import { Icon, PluginRender } from '@/components';
 import { PluginType } from '@/utils/pluginKit';
 import request from '@/utils/request';
@@ -35,6 +40,7 @@ const Index: FC = () => {
   const { user: userInfo } = loggedUserInfoStore();
   const { can_revision, revision } = sideNavStore();
   const { ai_enabled } = aiControlStore();
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const navigate = useNavigate();
 
   return (
@@ -72,6 +78,13 @@ const Index: FC = () => {
         <Icon name="people-fill" className="me-2" />
         <span>{t('header.nav.user')}</span>
       </NavLink>
+
+      {directoryEnabled && (
+        <NavLink to="/members" className="nav-link">
+          <Icon name="person-vcard-fill" className="me-2" />
+          <span>Members</span>
+        </NavLink>
+      )}
 
       <NavLink to="/badges" className="nav-link">
         <Icon name="award-fill" className="me-2" />

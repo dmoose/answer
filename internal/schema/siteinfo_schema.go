@@ -376,10 +376,11 @@ type SiteInfoResp struct {
 	Tags          *SiteTagsResp              `json:"site_tags"`
 	Legal         *SiteLegalSimpleResp       `json:"site_legal"`
 	Security      *SiteSecurityResp          `json:"site_security"`
-	Version       string                     `json:"version"`
-	Revision      string                     `json:"revision"`
-	AIEnabled     bool                       `json:"ai_enabled"`
-	MCPEnabled    bool                       `json:"mcp_enabled"`
+	Version          string                     `json:"version"`
+	Revision         string                     `json:"revision"`
+	AIEnabled        bool                       `json:"ai_enabled"`
+	MCPEnabled       bool                       `json:"mcp_enabled"`
+	DirectoryEnabled bool                       `json:"directory_enabled"`
 }
 
 type TemplateSiteInfoResp struct {

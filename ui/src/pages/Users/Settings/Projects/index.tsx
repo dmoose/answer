@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { Form, Button, Card, Badge, Modal } from 'react-bootstrap';
+import { Navigate } from 'react-router-dom';
 
 import { useToast } from '@/hooks';
 import {
@@ -9,7 +10,7 @@ import {
   deleteProject,
   type ProfileProject,
 } from '@/services';
-import { loggedUserInfoStore } from '@/stores';
+import { loggedUserInfoStore, featuresControlStore } from '@/stores';
 
 const STATUS_OPTS = [
   { value: 1, label: 'Active' },
@@ -36,6 +37,7 @@ const empty: FormState = {
 const ProjectsSettings: FC = () => {
   const Toast = useToast();
   const user = loggedUserInfoStore((s) => s.user);
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const [projects, setProjects] = useState<ProfileProject[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<ProfileProject | null>(null);
@@ -108,6 +110,10 @@ const ProjectsSettings: FC = () => {
           : 'Failed to delete';
       Toast.onShow({ msg, variant: 'danger' });
     }
+  }
+
+  if (!directoryEnabled) {
+    return <Navigate to="/users/settings/profile" replace />;
   }
 
   return (

@@ -8,7 +8,7 @@ import {
   Badge,
   Button,
 } from 'react-bootstrap';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import { Avatar, Pagination, Empty } from '@/components';
 import {
@@ -17,6 +17,7 @@ import {
   type DirectorySearchParams,
   type ProfileTag,
 } from '@/services';
+import { featuresControlStore } from '@/stores';
 
 const SORT_OPTIONS: Array<{
   value: NonNullable<DirectorySearchParams['sort']>;
@@ -40,6 +41,7 @@ function readArrayParam(params: URLSearchParams, key: string): string[] {
 }
 
 const Members: FC = () => {
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryStr = searchParams.get('q') ?? '';
@@ -107,6 +109,10 @@ const Members: FC = () => {
 
   const totalCount = data?.count ?? 0;
   const members = data?.list ?? [];
+
+  if (!directoryEnabled) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <Row className="py-4 mb-4">
@@ -182,8 +188,8 @@ const Members: FC = () => {
                             {m.tags.slice(0, 6).map((t) => (
                               <Badge
                                 key={t.id}
-                                bg="light"
-                                text="dark"
+                                bg="body-tertiary"
+                                text="body"
                                 className="border">
                                 {t.name}
                               </Badge>

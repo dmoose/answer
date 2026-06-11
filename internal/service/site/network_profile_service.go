@@ -11,6 +11,7 @@ import (
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/network_directory"
 	"github.com/apache/answer/internal/service/rank"
+	"github.com/apache/answer/internal/service/service_config"
 	usercommon "github.com/apache/answer/internal/service/user_common"
 )
 
@@ -49,6 +50,7 @@ type NetworkProfileService struct {
 	networkProfileRepo *network_profile.NetworkProfileRepo
 	networkProjectRepo *network_project.NetworkProjectRepo
 	profileTagRepo     *profile_tag.ProfileTagRepo
+	serviceConfig      *service_config.ServiceConfig
 }
 
 func NewNetworkProfileService(
@@ -58,6 +60,7 @@ func NewNetworkProfileService(
 	networkProfileRepo *network_profile.NetworkProfileRepo,
 	networkProjectRepo *network_project.NetworkProjectRepo,
 	profileTagRepo *profile_tag.ProfileTagRepo,
+	serviceConfig *service_config.ServiceConfig,
 ) *NetworkProfileService {
 	return &NetworkProfileService{
 		userCommon:         userCommon,
@@ -66,7 +69,12 @@ func NewNetworkProfileService(
 		networkProfileRepo: networkProfileRepo,
 		networkProjectRepo: networkProjectRepo,
 		profileTagRepo:     profileTagRepo,
+		serviceConfig:      serviceConfig,
 	}
+}
+
+func (s *NetworkProfileService) directoryEnabled() bool {
+	return s.serviceConfig != nil && s.serviceConfig.DirectoryEnabled
 }
 
 func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID string) (*NetworkProfile, error) {
@@ -105,6 +113,14 @@ func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID st
 				profile.SiteRanks = append(profile.SiteRanks, sr)
 			}
 		}
+	}
+
+	// Extended directory fields skipped when the feature is disabled — the
+	// frontend likewise hides UI in that mode, so leaving these empty keeps
+	// the response shape consistent without exposing guild-only concepts on
+	// a plain Q&A deployment.
+	if !s.directoryEnabled() {
+		return profile, nil
 	}
 
 	if s.networkProfileRepo != nil {

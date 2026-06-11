@@ -32,6 +32,7 @@ import {
   writeSettingStore,
   siteSecurityStore,
   aiControlStore,
+  featuresControlStore,
 } from '@/stores';
 import currentSiteStore from '@/stores/currentSite';
 import { RouteAlias } from '@/router/alias';
@@ -390,6 +391,9 @@ export const initAppSettingsStore = async () => {
     });
     aiControlStore.getState().update({
       ai_enabled: appSettings.ai_enabled,
+    });
+    featuresControlStore.getState().update({
+      directory_enabled: appSettings.directory_enabled ?? false,
     });
     siteSecurityStore.getState().update(appSettings.site_security);
   }

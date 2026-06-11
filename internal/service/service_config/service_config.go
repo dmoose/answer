@@ -24,4 +24,9 @@ type ServiceConfig struct {
 	CleanUpUploads                bool   `json:"clean_up_uploads" mapstructure:"clean_up_uploads" yaml:"clean_up_uploads"`
 	CleanOrphanUploadsPeriodHours int    `json:"clean_orphan_uploads_period_hours" mapstructure:"clean_orphan_uploads_period_hours" yaml:"clean_orphan_uploads_period_hours"`
 	PurgeDeletedFilesPeriodDays   int    `json:"purge_deleted_files_period_days" mapstructure:"purge_deleted_files_period_days" yaml:"purge_deleted_files_period_days"`
+	// DirectoryEnabled gates the network directory feature (member directory,
+	// extended profile, projects, profile tags). Default false. Set to true in
+	// conf/config.yaml for deployments that want the guild directory UI;
+	// leave false for plain product-support Q&A deployments.
+	DirectoryEnabled bool `json:"directory_enabled" mapstructure:"directory_enabled" yaml:"directory_enabled"`
 }

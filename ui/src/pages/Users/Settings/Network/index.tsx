@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from 'react';
-import { Form, Button, Badge, Alert } from 'react-bootstrap';
+import { Form, Button, Badge } from 'react-bootstrap';
+import { Navigate } from 'react-router-dom';
 
 import { useToast } from '@/hooks';
 import {
@@ -9,7 +10,7 @@ import {
   useProfileTags,
   type ProfileExternalLink,
 } from '@/services';
-import { loggedUserInfoStore } from '@/stores';
+import { loggedUserInfoStore, featuresControlStore } from '@/stores';
 
 const MAX_LINKS = 10;
 
@@ -26,6 +27,7 @@ const makeLinkKey = () => {
 const NetworkSettings: FC = () => {
   const Toast = useToast();
   const user = loggedUserInfoStore((s) => s.user);
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const { data: catalog } = useProfileTags();
 
   const [headline, setHeadline] = useState('');
@@ -112,6 +114,9 @@ const NetworkSettings: FC = () => {
     }
   }
 
+  if (!directoryEnabled) {
+    return <Navigate to="/users/settings/profile" replace />;
+  }
   if (loading) {
     return <div className="text-secondary">Loading…</div>;
   }
@@ -232,7 +237,7 @@ const NetworkSettings: FC = () => {
               Add link
             </Button>
           </Form.Label>
-          <Alert variant="light" className="border small">
+          <div className="border rounded p-3 small mb-3 bg-body-tertiary text-body">
             <Badge bg="secondary" className="me-2">
               user-claimed
             </Badge>
@@ -240,7 +245,7 @@ const NetworkSettings: FC = () => {
             network. For routing notifications (Zulip, Discord, etc.) the
             network resolves your identity through the SSO directory, not from
             this list.
-          </Alert>
+          </div>
           {links.length === 0 ? (
             <div className="text-secondary small">No links yet.</div>
           ) : (

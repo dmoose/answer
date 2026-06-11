@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from 'react';
 import { Card, Badge } from 'react-bootstrap';
 
 import { getNetworkProfile, type NetworkProfile } from '@/services';
+import { featuresControlStore } from '@/stores';
 
 const STATUS_LABEL: Record<number, string> = {
   1: 'Active',
@@ -32,11 +33,12 @@ interface Props {
 }
 
 const NetworkProfileSection: FC<Props> = ({ userId }) => {
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const [profile, setProfile] = useState<NetworkProfile | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    if (!userId) {
+    if (!userId || !directoryEnabled) {
       setProfile(null);
       return undefined;
     }
@@ -50,9 +52,9 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, directoryEnabled]);
 
-  if (!profile || !hasContent(profile)) return null;
+  if (!directoryEnabled || !profile || !hasContent(profile)) return null;
 
   return (
     <>
@@ -90,7 +92,11 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
           <h6 className="mb-2">Skills &amp; Interests</h6>
           <div className="d-flex flex-wrap gap-1">
             {profile.tags.map((t) => (
-              <Badge key={t.id} bg="light" text="dark" className="border">
+              <Badge
+                key={t.id}
+                bg="body-tertiary"
+                text="body"
+                className="border">
                 {t.name}
               </Badge>
             ))}

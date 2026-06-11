@@ -35,6 +35,7 @@ import sideNavStore from './sideNav';
 import commentReplyStore from './commentReply';
 import siteSecurityStore from './siteSecurity';
 import aiControlStore from './aiControl';
+import featuresControlStore from './featuresControl';
 
 export {
   toastStore,
@@ -55,4 +56,5 @@ export {
   writeSettingStore,
   siteSecurityStore,
   aiControlStore,
+  featuresControlStore,
 };

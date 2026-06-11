@@ -428,6 +428,8 @@ export interface SiteSettings {
   revision: string;
   site_security: AdminSettingsSecurity;
   ai_enabled: boolean;
+  mcp_enabled?: boolean;
+  directory_enabled?: boolean;
 }
 
 export interface AdminSettingBranding {
