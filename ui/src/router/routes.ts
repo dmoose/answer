@@ -478,6 +478,10 @@ const routes: RouteNode[] = [
             path: 'sites',
             page: 'pages/Admin/Sites',
           },
+          {
+            path: 'network-tags',
+            page: 'pages/Admin/NetworkTags',
+          },
         ],
       },
       {

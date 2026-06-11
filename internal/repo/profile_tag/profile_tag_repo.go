@@ -33,6 +33,17 @@ func (r *ProfileTagRepo) ListActive(ctx context.Context, kind int) ([]*entity.Pr
 	return tags, nil
 }
 
+// ListAll returns every profile tag including inactive — admin-only because
+// the public picker shouldn't surface retired tags.
+func (r *ProfileTagRepo) ListAll(ctx context.Context) ([]*entity.ProfileTag, error) {
+	var tags []*entity.ProfileTag
+	err := r.data.DB.Context(ctx).OrderBy("status ASC, name ASC").Find(&tags)
+	if err != nil {
+		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+	}
+	return tags, nil
+}
+
 func (r *ProfileTagRepo) GetBySlug(ctx context.Context, slug string) (*entity.ProfileTag, bool, error) {
 	t := &entity.ProfileTag{}
 	exist, err := r.data.DB.Context(ctx).Where("slug = ?", slug).Get(t)

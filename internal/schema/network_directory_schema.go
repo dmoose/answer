@@ -97,6 +97,17 @@ type DirectoryMember struct {
 	Tags                []*ProfileTagInfo `json:"tags"`
 }
 
+// AdminProfileTagInfo is the admin-view tag shape — includes Status so the
+// curator can see and toggle inactive tags.
+type AdminProfileTagInfo struct {
+	ID          string `json:"id"`
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Kind        int    `json:"kind"`
+	Description string `json:"description,omitempty"`
+	Status      int    `json:"status"`
+}
+
 // AdminProfileTagUpsertReq is the body for POST/PUT /admin/network/tags.
 type AdminProfileTagUpsertReq struct {
 	ID          string `json:"-"`

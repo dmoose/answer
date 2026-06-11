@@ -27,7 +27,7 @@ import { AccordionNav, Icon } from '@/components';
 import type { MenuItem } from '@/components/AccordionNav';
 import { ADMIN_NAV_MENUS } from '@/common/constants';
 import { useQueryPlugins } from '@/services';
-import { interfaceStore } from '@/stores';
+import { interfaceStore, featuresControlStore } from '@/stores';
 
 const AdminSideNav = () => {
   const { t } = useTranslation('translation', { keyPrefix: 'btns' });
@@ -38,6 +38,7 @@ const AdminSideNav = () => {
       have_config: true,
     });
 
+  const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const menus = cloneDeep(ADMIN_NAV_MENUS) as MenuItem[];
   if (configurablePlugins && configurablePlugins.length > 0) {
     menus.forEach((item) => {
@@ -50,6 +51,23 @@ const AdminSideNav = () => {
               displayName: plugin.name,
             }),
           ),
+        ];
+      }
+    });
+  }
+  // Append "Profile tags" to the community group when the directory feature
+  // is enabled. Kept dynamic rather than in ADMIN_NAV_MENUS so a corp deploy
+  // doesn't even see the entry.
+  if (directoryEnabled) {
+    menus.forEach((item) => {
+      if (item.name === 'community' && item.children) {
+        item.children = [
+          ...item.children,
+          {
+            name: 'network-tags',
+            path: 'network-tags',
+            displayName: 'Profile tags',
+          },
         ];
       }
     });

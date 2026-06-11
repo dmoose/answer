@@ -20,6 +20,27 @@ func NewProfileTagService(tagRepo *profile_tag.ProfileTagRepo) *ProfileTagServic
 	return &ProfileTagService{tagRepo: tagRepo}
 }
 
+// AdminListAll returns every tag in the catalog including inactive ones, for
+// the admin curation page.
+func (s *ProfileTagService) AdminListAll(ctx context.Context) ([]*schema.AdminProfileTagInfo, error) {
+	tags, err := s.tagRepo.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*schema.AdminProfileTagInfo, 0, len(tags))
+	for _, t := range tags {
+		out = append(out, &schema.AdminProfileTagInfo{
+			ID:          t.ID,
+			Slug:        t.Slug,
+			Name:        t.Name,
+			Kind:        t.Kind,
+			Description: t.Description,
+			Status:      t.Status,
+		})
+	}
+	return out, nil
+}
+
 // ListActive returns the catalog filtered by kind (0 = any). Used by the
 // member tag picker and the directory facet list.
 func (s *ProfileTagService) ListActive(ctx context.Context, kind int) ([]*schema.ProfileTagInfo, error) {

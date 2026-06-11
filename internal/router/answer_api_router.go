@@ -474,6 +474,7 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	r.GET("/site/role", a.siteAdminController.GetUserSiteRole)
 
 	// network directory tag management
+	r.GET("/network/tags", a.profileTagAdminController.ListTags)
 	r.POST("/network/tags", a.profileTagAdminController.CreateTag)
 	r.PUT("/network/tags/:id", a.profileTagAdminController.UpdateTag)
 }

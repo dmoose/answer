@@ -172,3 +172,43 @@ export const updateProject = (
 export const deleteProject = (id: string) => {
   return request.delete(`/answer/api/v1/network/projects/${id}`);
 };
+
+// ---- admin tag curation -----------------------------------------------------
+
+export interface AdminProfileTag extends ProfileTag {
+  status: number;
+}
+
+export const useAdminProfileTags = () => {
+  const url = '/answer/admin/api/network/tags';
+  const { data, error, mutate } = useSWR<AdminProfileTag[]>(
+    url,
+    request.instance.get,
+  );
+  return { data, error, isLoading: !data && !error, mutate };
+};
+
+export interface ProfileTagUpsertParams {
+  slug: string;
+  name: string;
+  kind: number;
+  description?: string;
+  status: number;
+}
+
+export const createAdminProfileTag = (params: ProfileTagUpsertParams) => {
+  return request.post<AdminProfileTag>(
+    '/answer/admin/api/network/tags',
+    params,
+  );
+};
+
+export const updateAdminProfileTag = (
+  id: string,
+  params: ProfileTagUpsertParams,
+) => {
+  return request.put<AdminProfileTag>(
+    `/answer/admin/api/network/tags/${id}`,
+    params,
+  );
+};

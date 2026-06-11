@@ -33,6 +33,15 @@ func (pc *ProfileTagAdminController) disabled(ctx *gin.Context) bool {
 	return true
 }
 
+// ListTags returns the full tag catalog, including inactive entries.
+func (pc *ProfileTagAdminController) ListTags(ctx *gin.Context) {
+	if pc.disabled(ctx) {
+		return
+	}
+	tags, err := pc.tagService.AdminListAll(ctx)
+	handler.HandleResponse(ctx, err, tags)
+}
+
 // CreateTag adds a curated tag to the profile tag catalog.
 func (pc *ProfileTagAdminController) CreateTag(ctx *gin.Context) {
 	if pc.disabled(ctx) {
