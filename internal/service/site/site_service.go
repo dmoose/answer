@@ -22,6 +22,7 @@ package site
 import (
 	"context"
 
+	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
 	"github.com/apache/answer/internal/service/role"
@@ -32,6 +33,7 @@ import (
 type SiteRepo interface {
 	AddSite(ctx context.Context, site *entity.Site) error
 	UpdateSite(ctx context.Context, site *entity.Site) error
+	UpdateSiteStatus(ctx context.Context, id string, status int) error
 	GetSite(ctx context.Context, id string) (*entity.Site, bool, error)
 	GetSiteBySlug(ctx context.Context, slug string) (*entity.Site, bool, error)
 	GetAllSites(ctx context.Context) ([]*entity.Site, error)
@@ -106,6 +108,27 @@ func (s *SiteService) GetAllSites(ctx context.Context) ([]*entity.Site, error) {
 
 func (s *SiteService) UpdateSite(ctx context.Context, site *entity.Site) error {
 	return s.siteRepo.UpdateSite(ctx, site)
+}
+
+// SetSiteStatus toggles a site between active and inactive. Refuses to
+// deactivate the default site — when its slug stops resolving, the entire
+// network 404s with no UI escape hatch, so we close the trap at the
+// service layer regardless of who's calling.
+func (s *SiteService) SetSiteStatus(ctx context.Context, siteID string, active bool) error {
+	if siteID == constant.DefaultSiteID && !active {
+		return errors.BadRequest(reason.ObjectNotFound).
+			WithMsg("the default site cannot be deactivated")
+	}
+	if _, exist, err := s.siteRepo.GetSite(ctx, siteID); err != nil {
+		return err
+	} else if !exist {
+		return errors.NotFound(reason.ObjectNotFound)
+	}
+	status := entity.SiteStatusActive
+	if !active {
+		status = entity.SiteStatusSuspended
+	}
+	return s.siteRepo.UpdateSiteStatus(ctx, siteID, status)
 }
 
 func (s *SiteService) SetUserSiteRole(ctx context.Context, userID, siteID string, roleID int) error {

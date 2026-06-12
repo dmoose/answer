@@ -36,9 +36,10 @@ import (
 )
 
 type SiteMiddleware struct {
-	db    *xorm.Engine
-	mu    sync.RWMutex
-	cache map[string]string // slug → site_id
+	db       *xorm.Engine
+	mu       sync.RWMutex
+	cache    map[string]string // slug → site_id
+	fallback string            // lowest-ID active site, used when default is gone
 }
 
 func NewSiteMiddleware(db *xorm.Engine) *SiteMiddleware {
@@ -49,16 +50,22 @@ func NewSiteMiddleware(db *xorm.Engine) *SiteMiddleware {
 
 func (sm *SiteMiddleware) refreshCache() {
 	var sites []entity.Site
-	if err := sm.db.Where("status = ?", entity.SiteStatusActive).Find(&sites); err != nil {
+	if err := sm.db.OrderBy("id ASC").
+		Where("status = ?", entity.SiteStatusActive).Find(&sites); err != nil {
 		log.Errorf("load sites: %v", err)
 		return
 	}
 	m := make(map[string]string, len(sites))
+	fallback := ""
 	for _, s := range sites {
 		m[s.Slug] = s.ID
+		if fallback == "" {
+			fallback = s.ID
+		}
 	}
 	sm.mu.Lock()
 	sm.cache = m
+	sm.fallback = fallback
 	sm.mu.Unlock()
 }
 
@@ -66,6 +73,15 @@ func (sm *SiteMiddleware) resolve(slug string) string {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	return sm.cache[slug]
+}
+
+// fallbackSiteID returns the lowest-ID active site, used when "default"
+// is missing or inactive. Keeps the network serving even when an admin
+// manages to break the default routing.
+func (sm *SiteMiddleware) fallbackSiteID() string {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return sm.fallback
 }
 
 // ResolveSite picks the active site from request identity in priority order:
@@ -84,7 +100,11 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 		path := ctx.Request.URL.Path
 		if path == "/healthz" ||
 			strings.HasPrefix(path, "/static/") ||
-			strings.HasPrefix(path, "/install/") {
+			strings.HasPrefix(path, "/install/") ||
+			strings.HasPrefix(path, "/answer/admin/api/") {
+			// Admin API skips site resolution so an admin can recover the
+			// network from the UI even if all the site routing is broken
+			// (e.g. default site got deactivated, slug got renamed).
 			ctx.Next()
 			return
 		}
@@ -118,9 +138,14 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			}
 		}
 
-		// 4. Default fallback
+		// 4. Default fallback — try the "default" slug first, then any
+		// active site. Belt-and-suspenders so the network keeps serving
+		// even if the default site gets deactivated by accident.
 		if siteID == "" {
 			siteID = sm.resolve("default")
+		}
+		if siteID == "" {
+			siteID = sm.fallbackSiteID()
 		}
 
 		if siteID == "" {

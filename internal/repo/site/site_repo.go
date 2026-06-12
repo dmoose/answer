@@ -45,9 +45,26 @@ func (r *siteRepo) AddSite(ctx context.Context, s *entity.Site) error {
 	return nil
 }
 
+// UpdateSite writes the editable fields from the Sites admin form.
+// Status and slug are intentionally excluded: slug is immutable post-create
+// (it's the routing key) and status changes flow through UpdateSiteStatus.
+// Including them here let a description edit silently overwrite both with
+// the request's zero values — which deactivated the default site and 404d
+// the whole network.
 func (r *siteRepo) UpdateSite(ctx context.Context, s *entity.Site) error {
 	_, err := r.data.DB.Context(ctx).ID(s.ID).
-		Cols("name", "slug", "description", "status", "icon_url", "base_url").Update(s)
+		Cols("name", "description", "icon_url", "base_url").Update(s)
+	if err != nil {
+		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+	}
+	return nil
+}
+
+// UpdateSiteStatus is the dedicated path for status changes — kept narrow
+// so callers can't piggyback other field updates onto an activation toggle.
+func (r *siteRepo) UpdateSiteStatus(ctx context.Context, id string, status int) error {
+	_, err := r.data.DB.Context(ctx).ID(id).
+		Cols("status").Update(&entity.Site{Status: status})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}

@@ -44,6 +44,13 @@ func (m *mockSiteRepo) UpdateSite(_ context.Context, s *entity.Site) error {
 	return nil
 }
 
+func (m *mockSiteRepo) UpdateSiteStatus(_ context.Context, id string, status int) error {
+	if s, ok := m.sites[id]; ok {
+		s.Status = status
+	}
+	return nil
+}
+
 func (m *mockSiteRepo) GetSite(_ context.Context, id string) (*entity.Site, bool, error) {
 	s, ok := m.sites[id]
 	return s, ok, nil
