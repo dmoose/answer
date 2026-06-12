@@ -183,10 +183,10 @@ func Test_siteInfoRepo_SiteReadDoesNotLeak(t *testing.T) {
 	assert.Equal(t, "site-a-banner", gotA.Content)
 }
 
-// Test_pluginConfigRepo_SiteScopedWrite verifies that SavePluginConfig from
-// a site context writes to a site-specific row and does not overwrite the
-// global row that the runtime loads at startup.
-func Test_pluginConfigRepo_SiteScopedWrite(t *testing.T) {
+// Test_pluginConfigRepo_AlwaysWritesGlobal verifies that SavePluginConfig
+// updates the global row regardless of site context. Plugin runtime is
+// process-wide; earlier site-scoping silently hid configs from the loader.
+func Test_pluginConfigRepo_AlwaysWritesGlobal(t *testing.T) {
 	repo := plugin_config.NewPluginConfigRepo(testDataSource)
 	db := testDataSource.DB
 
@@ -194,22 +194,20 @@ func Test_pluginConfigRepo_SiteScopedWrite(t *testing.T) {
 	_, err := db.Insert(&entity.PluginConfig{PluginSlugName: slug, Value: "global-cfg", SiteID: ""})
 	require.NoError(t, err)
 
-	err = repo.SavePluginConfig(siteCtx(siteA), slug, "site-a-cfg")
+	err = repo.SavePluginConfig(siteCtx(siteA), slug, "updated-from-site-a")
 	require.NoError(t, err)
 
-	// Global row preserved — this is what startup actually loads.
 	globalRow := &entity.PluginConfig{}
 	exist, err := db.Where("plugin_slug_name = ? AND site_id = ''", slug).Get(globalRow)
 	require.NoError(t, err)
 	require.True(t, exist)
-	assert.Equal(t, "global-cfg", globalRow.Value)
+	assert.Equal(t, "updated-from-site-a", globalRow.Value)
 
-	// Site A row exists.
-	siteRow := &entity.PluginConfig{}
-	exist, err = db.Where("plugin_slug_name = ? AND site_id = ?", slug, siteA).Get(siteRow)
+	// No site-scoped row was created.
+	var siteRows []*entity.PluginConfig
+	err = db.Where("plugin_slug_name = ? AND site_id != ''", slug).Find(&siteRows)
 	require.NoError(t, err)
-	require.True(t, exist)
-	assert.Equal(t, "site-a-cfg", siteRow.Value)
+	assert.Empty(t, siteRows)
 
 	// GetPluginConfigAll (startup path, no site context) returns global only.
 	all, err := repo.GetPluginConfigAll(context.Background())

@@ -25,7 +25,6 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
-	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/plugin_common"
 	"github.com/segmentfault/pacman/errors"
 )
@@ -41,14 +40,15 @@ func NewPluginConfigRepo(data *data.Data) plugin_common.PluginConfigRepo {
 	}
 }
 
-// SavePluginConfig writes to the row scoped by the current site context, never
-// the global row from inside a site request. Caller in a site context with no
-// existing override inserts a new row.
+// SavePluginConfig always writes the global row. Plugin runtime applies
+// config once at startup with no site context, so per-site overrides would
+// be stored but never honored — and earlier site-scoped writes silently
+// hid admin-saved configs (e.g. fastgate URLs disappearing from the UI
+// after a site switch).
 func (ur *pluginConfigRepo) SavePluginConfig(ctx context.Context, pluginSlugName, configValue string) (err error) {
-	siteID := multisite.SiteIDFromContext(ctx)
 	old := &entity.PluginConfig{}
 	exist, err := ur.data.DB.Context(ctx).
-		Where("plugin_slug_name = ? AND site_id = ?", pluginSlugName, siteID).Get(old)
+		Where("plugin_slug_name = ? AND site_id = ''", pluginSlugName).Get(old)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -59,7 +59,6 @@ func (ur *pluginConfigRepo) SavePluginConfig(ctx context.Context, pluginSlugName
 		_, err = ur.data.DB.Context(ctx).Insert(&entity.PluginConfig{
 			PluginSlugName: pluginSlugName,
 			Value:          configValue,
-			SiteID:         siteID,
 		})
 	}
 	if err != nil {
