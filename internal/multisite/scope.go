@@ -50,6 +50,18 @@ func WithoutSite(ctx context.Context) context.Context {
 	return context.WithValue(ctx, constant.SiteIDContextKey, "")
 }
 
+// TierSiteID returns the siteID for tier-model tables (config, site_info)
+// where the default site is the global row. Default-site context normalizes
+// to "" so admin saves go to the global default instead of creating a
+// phantom per-default-site override that masks it.
+func TierSiteID(ctx context.Context) string {
+	siteID := SiteIDFromContext(ctx)
+	if siteID == constant.DefaultSiteID {
+		return ""
+	}
+	return siteID
+}
+
 func Scope(session *xorm.Session, ctx context.Context) *xorm.Session {
 	if siteID := SiteIDFromContext(ctx); siteID != "" {
 		return session.Where("site_id = ?", siteID)

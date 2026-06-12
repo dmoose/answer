@@ -48,7 +48,7 @@ func NewSiteInfo(data *data.Data) siteinfo_common.SiteInfoRepo {
 // override; from no site context, writes the global default. Never overwrites
 // the global row from inside a site request.
 func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *entity.SiteInfo) (err error) {
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 	data.SiteID = siteID
 
 	old := &entity.SiteInfo{}
@@ -77,7 +77,7 @@ func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutC
 			return siteInfo, true, nil
 		}
 	}
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 	if siteID != "" {
 		siteInfo = &entity.SiteInfo{}
 		exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ?", siteType, siteID).Get(siteInfo)
@@ -103,7 +103,7 @@ func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutC
 }
 
 func (sr *siteInfoRepo) cachePrefix(ctx context.Context) string {
-	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+	if siteID := multisite.TierSiteID(ctx); siteID != "" {
 		return siteID + ":"
 	}
 	return ""

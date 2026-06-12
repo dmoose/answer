@@ -42,7 +42,7 @@ func NewConfigRepo(data *data.Data) config.ConfigRepo {
 }
 
 func (cr configRepo) cachePrefix(ctx context.Context) string {
-	if siteID := multisite.SiteIDFromContext(ctx); siteID != "" {
+	if siteID := multisite.TierSiteID(ctx); siteID != "" {
 		return siteID + ":"
 	}
 	return ""
@@ -61,7 +61,7 @@ func (cr configRepo) GetConfigByID(ctx context.Context, id int) (c *entity.Confi
 	}
 
 	c = &entity.Config{}
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 
 	// Try site-specific config first
 	if siteID != "" {
@@ -103,7 +103,7 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 	}
 
 	c = &entity.Config{}
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 
 	// Try site-specific config first
 	if siteID != "" {
@@ -134,7 +134,7 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 
 func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *entity.Config, err error) {
 	c = &entity.Config{}
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 
 	if siteID != "" {
 		exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(c)
@@ -158,7 +158,7 @@ func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *e
 }
 
 func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string) (err error) {
-	siteID := multisite.SiteIDFromContext(ctx)
+	siteID := multisite.TierSiteID(ctx)
 
 	if siteID != "" {
 		// Site context: update the site override if present, else insert one.
