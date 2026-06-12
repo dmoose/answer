@@ -33,15 +33,21 @@ import {
 import Pattern from '@/common/pattern';
 import type { SearchResItem } from '@/common/interface';
 import { escapeRemove } from '@/utils';
+import currentSiteStore from '@/stores/currentSite';
 
 interface Props {
   data: SearchResItem;
 }
 const Index: FC<Props> = ({ data }) => {
   const { t } = useTranslation('translation', { keyPrefix: 'question' });
+  const { currentSite, sites } = currentSiteStore();
   if (!data?.object_type) {
     return null;
   }
+  const resultSite =
+    data.object?.site_id && data.object.site_id !== currentSite?.id
+      ? sites.find((s) => s.id === data.object.site_id)
+      : null;
   let itemUrl = pathFactory.questionLanding(
     data.object.id,
     data.object.url_title,
@@ -70,6 +76,13 @@ const Index: FC<Props> = ({ data }) => {
           style={{ marginTop: '2px' }}>
           {t(data.object_type, { keyPrefix: 'btns' })}
         </span>
+        {resultSite && (
+          <span
+            className="float-start me-2 badge text-bg-secondary"
+            style={{ marginTop: '2px' }}>
+            {resultSite.name}
+          </span>
+        )}
         <Link className="h5 mb-0 link-dark text-break" to={itemUrl}>
           <HighlightText text={data.object.title} keywords={keywords} />
           {data.object.status === 'closed'

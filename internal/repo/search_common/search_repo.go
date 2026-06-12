@@ -60,6 +60,7 @@ var (
 		"CASE WHEN `accepted_answer_id` > 0 THEN 2 ELSE 0 END as `accepted`",
 		"`question`.`status` as `status`",
 		"`post_update_time`",
+		"`question`.`site_id` as `site_id`",
 	}
 	aFields = []string{
 		"`answer`.`id` as `id`",
@@ -73,6 +74,7 @@ var (
 		"`adopted` as `accepted`",
 		"`answer`.`status` as `status`",
 		"`answer`.`created_at` as `post_update_time`",
+		"`answer`.`site_id` as `site_id`",
 	}
 )
 
@@ -532,6 +534,7 @@ func (sr *searchRepo) parseResult(ctx context.Context, res []map[string][]byte, 
 			UrlTitle:        htmltext.UrlTitle(string(r["title"])),
 			Excerpt:         htmltext.FetchMatchedExcerpt(string(r["parsed_text"]), words, "...", 100),
 			CreatedAtParsed: tp.Unix(),
+			SiteID:          string(r["site_id"]),
 			UserInfo: &schema.SearchObjectUser{
 				ID: string(r["user_id"]),
 			},

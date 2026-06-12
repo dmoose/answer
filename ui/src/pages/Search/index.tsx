@@ -46,6 +46,7 @@ const Index = () => {
   const page = searchParams.get('page') || 1;
   const q = searchParams.get('q') || '';
   const order = searchParams.get('order') || 'relevance';
+  const scope = (searchParams.get('scope') as 'site' | 'network') || 'site';
   const [isLoading, setIsLoading] = useState(false);
   const { isSkeletonShow } = useSkeletonControl(isLoading);
   const [data, setData] = useState<SearchRes>({
@@ -62,6 +63,7 @@ const Index = () => {
     const params: SearchParams = {
       q,
       order,
+      scope,
       page: Number(page),
       size: 20,
     };
@@ -95,7 +97,7 @@ const Index = () => {
     searchCaptcha.check(() => {
       doSearch();
     });
-  }, [q, order, page]);
+  }, [q, order, scope, page]);
 
   let pageTitle = t('search', { keyPrefix: 'page_title' });
   if (q) {
@@ -110,7 +112,7 @@ const Index = () => {
       <Col className="page-main flex-auto">
         <Head data={extra} />
         {isLogged && <AiCard />}
-        <SearchHead sort={order} count={isLoading ? -1 : count} />
+        <SearchHead sort={order} scope={scope} count={isLoading ? -1 : count} />
         <ListGroup className="rounded-0 mb-5">
           {isSkeletonShow ? (
             <ListLoader />

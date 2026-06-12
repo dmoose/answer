@@ -22,6 +22,7 @@ package content
 import (
 	"context"
 
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/search_common"
 	"github.com/apache/answer/internal/service/search_parser"
@@ -53,6 +54,9 @@ func (ss *SearchService) Search(ctx context.Context, dto *schema.SearchDTO) (res
 			Total:         0,
 			SearchResults: make([]*schema.SearchResult, 0),
 		}, nil
+	}
+	if dto.Scope == "network" {
+		ctx = multisite.WithoutSite(ctx)
 	}
 
 	// search type

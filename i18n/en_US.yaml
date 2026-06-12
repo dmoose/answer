@@ -1573,6 +1573,9 @@ ui:
       active: Active
       score: Score
       more: More
+    scope:
+      site: This site
+      network: All sites
     tips:
       title: Advanced Search Tips
       tag: "<1>[tag]</1> search with a tag"

@@ -21,31 +21,45 @@ import { FC, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { QueryGroup } from '@/components';
+import currentSiteStore from '@/stores/currentSite';
 
 const sortBtns = ['relevance', 'newest', 'active', 'score'];
+const scopeBtns = ['site', 'network'];
 
 interface Props {
   count: number;
   sort: string;
+  scope: string;
 }
-const Index: FC<Props> = ({ sort, count = 0 }) => {
+const Index: FC<Props> = ({ sort, scope, count = 0 }) => {
   const { t } = useTranslation('translation', {
     keyPrefix: 'search.sort_btns',
   });
+  const sites = currentSiteStore((s) => s.sites);
 
   return (
-    <div className="d-flex flex-wrap align-items-center justify-content-between pt-2 pb-3">
+    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 pb-3">
       <h5 className="mb-0">
         {count === -1
           ? t('counts_loading', { keyPrefix: 'search' })
           : t('counts', { count, keyPrefix: 'search' })}
       </h5>
-      <QueryGroup
-        data={sortBtns}
-        currentSort={sort}
-        sortKey="order"
-        i18nKeyPrefix="search.sort_btns"
-      />
+      <div className="d-flex flex-wrap align-items-center gap-2">
+        {sites.length > 1 && (
+          <QueryGroup
+            data={scopeBtns}
+            currentSort={scope || 'site'}
+            sortKey="scope"
+            i18nKeyPrefix="search.scope"
+          />
+        )}
+        <QueryGroup
+          data={sortBtns}
+          currentSort={sort}
+          sortKey="order"
+          i18nKeyPrefix="search.sort_btns"
+        />
+      </div>
     </div>
   );
 };

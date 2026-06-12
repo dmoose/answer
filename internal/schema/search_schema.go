@@ -33,6 +33,7 @@ type SearchDTO struct {
 	Page        int    `validate:"omitempty,min=1" form:"page,default=1"`
 	Size        int    `validate:"omitempty,min=1,max=50" form:"size,default=30"`
 	Order       string `validate:"required,oneof=newest active score relevance" form:"order,default=relevance" enums:"newest,active,score,relevance"`
+	Scope       string `validate:"omitempty,oneof=site network" form:"scope,default=site" enums:"site,network"`
 	CaptchaID   string `form:"captcha_id"`
 	CaptchaCode string `form:"captcha_code"`
 	UserID      string `json:"-"`
@@ -150,6 +151,9 @@ type SearchObject struct {
 	Tags []*TagResp `json:"tags"`
 	// Status
 	StatusStr string `json:"status"`
+	// SiteID of the question or answer's site, surfaced so network-scope
+	// search results can render a "from <site>" badge.
+	SiteID string `json:"site_id,omitempty"`
 }
 
 type SearchObjectUser struct {

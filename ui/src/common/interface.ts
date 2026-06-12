@@ -508,6 +508,7 @@ export interface SearchParams extends ImgCodeReq {
   order: string;
   page: number;
   size?: number;
+  scope?: 'site' | 'network';
 }
 
 /**
@@ -528,6 +529,7 @@ export interface SearchResItem {
     accepted: boolean;
     tags: TagBase[];
     status?: string;
+    site_id?: string;
   };
 }
 export interface SearchRes extends ListResult<SearchResItem> {

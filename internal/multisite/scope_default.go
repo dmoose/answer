@@ -29,6 +29,8 @@ import (
 
 func SiteIDFromContext(_ context.Context) string { return "" }
 
+func WithoutSite(ctx context.Context) context.Context { return ctx }
+
 func Scope(session *xorm.Session, _ context.Context) *xorm.Session { return session }
 
 func SetSiteID(_ context.Context, _ ...any) {}

@@ -44,6 +44,12 @@ func SiteIDFromContext(ctx context.Context) string {
 	return ""
 }
 
+// WithoutSite returns a child context with the site ID cleared. Used for
+// opt-in cross-site reads (e.g. network-wide search).
+func WithoutSite(ctx context.Context) context.Context {
+	return context.WithValue(ctx, constant.SiteIDContextKey, "")
+}
+
 func Scope(session *xorm.Session, ctx context.Context) *xorm.Session {
 	if siteID := SiteIDFromContext(ctx); siteID != "" {
 		return session.Where("site_id = ?", siteID)
