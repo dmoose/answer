@@ -76,10 +76,14 @@ func (nr *notificationRepo) ClearUnRead(ctx context.Context, userID string, noti
 	return
 }
 
+// ClearIDUnRead and GetById are unscoped — notification ID is unique across
+// sites, the service layer authorizes by user_id, and scoping by site here
+// silently blocks cross-site clears (e.g. badge alert won earned on site A,
+// dismissed while viewing site B).
 func (nr *notificationRepo) ClearIDUnRead(ctx context.Context, userID string, id string) (err error) {
 	info := &entity.Notification{}
 	info.IsRead = schema.NotificationRead
-	_, err = nr.data.SiteDB(ctx).Where("user_id = ?", userID).And("id = ?", id).Cols("is_read").Update(info)
+	_, err = nr.data.DB.Context(ctx).Where("user_id = ?", userID).And("id = ?", id).Cols("is_read").Update(info)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -88,7 +92,7 @@ func (nr *notificationRepo) ClearIDUnRead(ctx context.Context, userID string, id
 
 func (nr *notificationRepo) GetById(ctx context.Context, id string) (*entity.Notification, bool, error) {
 	info := &entity.Notification{}
-	exist, err := nr.data.SiteDB(ctx).Where("id = ? ", id).Get(info)
+	exist, err := nr.data.DB.Context(ctx).Where("id = ? ", id).Get(info)
 	if err != nil {
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		return info, false, err
