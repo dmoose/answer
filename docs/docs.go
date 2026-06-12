@@ -11608,6 +11608,10 @@ const docTemplate = `{
                 "question_id": {
                     "type": "string"
                 },
+                "site_id": {
+                    "description": "SiteID of the question or answer's site, surfaced so network-scope\nsearch results can render a \"from \u003csite\u003e\" badge.",
+                    "type": "string"
+                },
                 "status": {
                     "description": "Status",
                     "type": "string"

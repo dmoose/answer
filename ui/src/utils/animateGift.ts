@@ -42,6 +42,10 @@ export default class Confetti {
 
   private sprites;
 
+  private rafId: number | null = null;
+
+  private running = true;
+
   constructor(param) {
     this.parent = param.elm || document.body;
     this.canvas = document.createElement('canvas');
@@ -77,7 +81,7 @@ export default class Confetti {
     this.parent.appendChild(this.canvas);
     this.progress.start(performance.now());
 
-    requestAnimationFrame(this.render);
+    this.rafId = requestAnimationFrame(this.render);
   }
 
   static get CONST() {
@@ -148,6 +152,7 @@ export default class Confetti {
   }
 
   render(now) {
+    if (!this.running) return;
     const progress = this.progress.tick(now);
 
     this.canvas.width = this.width;
@@ -174,10 +179,15 @@ export default class Confetti {
       this.ctx.restore();
     }
 
-    requestAnimationFrame(this.render);
+    this.rafId = requestAnimationFrame(this.render);
   }
 
   destroy() {
+    this.running = false;
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
     if (this.parent.contains(this.canvas)) {
       this.parent.removeChild(this.canvas);
     }

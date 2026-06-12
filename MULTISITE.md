@@ -25,12 +25,15 @@ Without the `multisite` tag, the binary behaves identically to upstream Answer.
 
 Every request is resolved to a site via middleware, checked in order:
 
-1. `X-Site-ID` header (validated against known sites)
-2. Subdomain (`golang.example.com` → slug `golang`)
-3. Path prefix (`/s/golang` → slug `golang`)
-4. Falls back to the default site
+1. Subdomain (`golang.example.com` → slug `golang`)
+2. Path prefix (`/s/golang/...` → slug `golang`)
+3. `X-Site-Slug` header (validated against known sites; used by the SPA since API calls don't carry the basename)
+4. `default` slug
+5. Lowest-ID active site (safety net so the network keeps serving if the default ever gets deactivated)
 
-The frontend uses path-based routing. Navigating to `/s/golang` sets the React Router basename and sends `X-Site-ID` on all API calls.
+`/answer/admin/api/**`, `/static/**`, `/install/**`, and `/healthz` skip resolution entirely so the admin UI can recover the network even when routing is broken.
+
+The frontend uses path-based routing. Navigating to `/s/golang` sets the React Router basename and sends `X-Site-Slug` on every API call.
 
 ### Data Model
 
@@ -99,10 +102,12 @@ GET /answer/api/v1/network/user/profile?user_id=  — cross-site reputation
 
 ## Frontend
 
-- **Site switcher** — dropdown in the header showing all sites, navigates via `/s/{slug}` URLs
-- **Dynamic basename** — React Router uses `/s/{slug}` as basename when on a site path
-- **Request interceptor** — `X-Site-ID` header sent on all API calls from the current site context
-- **Site store** — Zustand store resolves current site from URL path or subdomain
+- **Site context picker** — card-style block at the top of the desktop left nav (icon + site name + chevron; descriptions only in the open dropdown). Hidden when only one site exists. The legacy header dropdown is preserved for mobile via `.d-lg-none`.
+- **Dynamic basename** — React Router uses `/s/{slug}` as basename when on a site path.
+- **Request interceptor** — `X-Site-Slug` header sent unconditionally on every API call from the active site context. (Earlier logic skipped it when the SPA URL had `/s/<slug>`, but API requests go to `/answer/api/v1/...` without the basename, so the server saw no slug and fell back to the default site.)
+- **Site-aware search placeholder** — search input shows `Search <site name>` so the scope is visible after a switch.
+- **Search scope toggle** — when more than one site exists, the search results page renders a "This site / All sites" toggle next to the sort. Network-scope results carry a small site-name badge so cross-site origin is visible at a glance.
+- **Site store** — Zustand store resolves the current site from URL path or subdomain.
 
 ## Plugin Compatibility
 
@@ -141,12 +146,22 @@ Browser → Answer login → redirect to fastgate `/authorize` → magic link em
 
 Existing fastgate sessions enable true SSO — if already authenticated with fastgate (e.g. from another app), the login is instant with no email prompt. Answer logout clears the Answer session only; the fastgate session persists (standard SSO behavior).
 
+## Scoping Doctrine
+
+Patterns codified after live-site bugs that all had the same shape: a context-scoped query silently returning nothing.
+
+- **Identity is global; content is per-site.** `user`, `role`, `power`, `badge` catalog, `api_key`, `user_notification_config`, `user_external_login`, network directory tables (`network_profile`, `network_project`, `profile_tag`, `member_directory`) are all unscoped. One login works on every site; one profile page exists per user.
+- **`config` and `site_info` use a symmetric cascade.** Site-first read with global fallback; writes follow the same context (a save while on Site A creates a Site A override, a save with no site context updates the global default). The cascade is intentional — Site B silently inherits Site A's settings only when Site A actively overrides them.
+- **`plugin_config` is purely global.** Plugin runtime is process-wide and applies config once at startup. Earlier site-scoped writes silently hid admin saves from the loader — `SavePluginConfig` now always writes the global row regardless of context.
+- **Notification ID lookups are global.** `GetById` and `ClearIDUnRead` use unscoped DB. Badge award alert cache is keyed by user, not site; if the notification scoping were strict, dismissing a badge alert from a different site than where it was earned would silently no-op and the modal would persist across browser restarts.
+- **The default site cannot be deactivated.** `SiteService.SetSiteStatus` refuses to disable `DefaultSiteID`. The resolver also falls back to the lowest-ID active site if the default ever goes missing.
+- **Search is site-scoped by default; opt-in network scope via `?scope=network`.** Server validates the param at the DTO layer (`oneof=site network`) and clears the site_id from context before hitting the repo. Each result carries its origin `site_id` so the UI can render a cross-site badge.
+
 ## Known Limitations
 
-- **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs route group fix for true API-level content protection.
+- **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs a route group fix for true API-level content protection.
 - **Network profile frontend** — API exists at `/network/user/profile`, no React page yet.
 - **Migration v33 error handling** — column-add errors are logged but not distinguished from unexpected failures.
-- **Plugin config is effectively global** — `plugin_config.site_id` exists and `SavePluginConfig` writes per-site rows correctly, but the runtime applies plugin configs once at process startup with no site context, so per-site overrides are stored but never wired through to plugin behavior. Per-site plugin config requires a request-scoped re-apply that does not yet exist.
 - **Site role only escalates** — a user's per-site role takes effect only when it is more privileged than the global role; a site role cannot demote a global admin. By design (network admin overrides everywhere), but worth noting.
 - **Badge counting is network-wide** — `badge_award.site_id` records where a badge was earned, but threshold rules (e.g. "10 accepted answers") count across all sites. User reputation crosses sites by design; badges follow the same model.
 - **Single-instance site cache** — site routing reads an in-process slug→id map. Multi-instance deployments will serve stale routes after admin changes until each instance restarts or refreshes its cache.

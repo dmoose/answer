@@ -2183,6 +2183,11 @@ definitions:
         type: string
       question_id:
         type: string
+      site_id:
+        description: |-
+          SiteID of the question or answer's site, surfaced so network-scope
+          search results can render a "from <site>" badge.
+        type: string
       status:
         description: Status
         type: string
