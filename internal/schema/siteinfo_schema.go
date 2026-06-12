@@ -246,6 +246,25 @@ type SiteSeoReq struct {
 	Robots    string `validate:"required" form:"robots" json:"robots"`
 }
 
+// AppSwitcherLink is one entry in the app switcher dropdown.
+type AppSwitcherLink struct {
+	Name        string `validate:"required,gt=0,lte=64"  json:"name"`
+	Description string `validate:"omitempty,lte=200"     json:"description"`
+	URL         string `validate:"required,url,lte=512"  json:"url"`
+	Icon        string `validate:"omitempty,lte=512"     json:"icon"`
+}
+
+// SiteAppSwitcherReq is the admin-saved app switcher config. Global only
+// (no per-site override) per the design decision; the read path forces
+// site_id=” regardless of context.
+type SiteAppSwitcherReq struct {
+	Enabled bool              `json:"enabled"`
+	Links   []AppSwitcherLink `validate:"dive" json:"links"`
+}
+
+// SiteAppSwitcherResp matches the saved shape one-for-one.
+type SiteAppSwitcherResp SiteAppSwitcherReq
+
 func (s *SiteSeoResp) IsShortLink() bool {
 	return s.Permalink == constant.PermalinkQuestionIDAndTitleByShortID ||
 		s.Permalink == constant.PermalinkQuestionIDByShortID
@@ -376,6 +395,7 @@ type SiteInfoResp struct {
 	Tags             *SiteTagsResp              `json:"site_tags"`
 	Legal            *SiteLegalSimpleResp       `json:"site_legal"`
 	Security         *SiteSecurityResp          `json:"site_security"`
+	AppSwitcher      *SiteAppSwitcherResp       `json:"app_switcher,omitempty"`
 	Version          string                     `json:"version"`
 	Revision         string                     `json:"revision"`
 	AIEnabled        bool                       `json:"ai_enabled"`

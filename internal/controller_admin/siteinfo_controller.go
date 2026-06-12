@@ -687,3 +687,34 @@ func (sc *SiteInfoController) UpdateMCPConfig(ctx *gin.Context) {
 	err := sc.siteInfoService.SaveSiteMCP(ctx, req)
 	handler.HandleResponse(ctx, err, nil)
 }
+
+// GetAppSwitcher get the app switcher config
+// @Summary get app switcher config
+// @Description get app switcher config
+// @Security ApiKeyAuth
+// @Tags admin
+// @Produce json
+// @Success 200 {object} handler.RespBody{data=schema.SiteAppSwitcherResp}
+// @Router /answer/admin/api/siteinfo/app-switcher [get]
+func (sc *SiteInfoController) GetAppSwitcher(ctx *gin.Context) {
+	resp, err := sc.siteInfoService.GetSiteAppSwitcher(ctx)
+	handler.HandleResponse(ctx, err, resp)
+}
+
+// UpdateAppSwitcher update the app switcher config
+// @Summary update app switcher config
+// @Description update app switcher config
+// @Security ApiKeyAuth
+// @Tags admin
+// @Param data body schema.SiteAppSwitcherReq true "app switcher config"
+// @Produce json
+// @Success 200 {object} handler.RespBody{}
+// @Router /answer/admin/api/siteinfo/app-switcher [put]
+func (sc *SiteInfoController) UpdateAppSwitcher(ctx *gin.Context) {
+	req := &schema.SiteAppSwitcherReq{}
+	if handler.BindAndCheck(ctx, req) {
+		return
+	}
+	err := sc.siteInfoService.SaveSiteAppSwitcher(ctx, req)
+	handler.HandleResponse(ctx, err, nil)
+}

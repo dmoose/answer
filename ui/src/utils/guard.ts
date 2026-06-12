@@ -33,6 +33,7 @@ import {
   siteSecurityStore,
   aiControlStore,
   featuresControlStore,
+  appSwitcherStore,
 } from '@/stores';
 import currentSiteStore from '@/stores/currentSite';
 import { RouteAlias } from '@/router/alias';
@@ -394,6 +395,10 @@ export const initAppSettingsStore = async () => {
     });
     featuresControlStore.getState().update({
       directory_enabled: appSettings.directory_enabled ?? false,
+    });
+    appSwitcherStore.getState().update({
+      enabled: appSettings.app_switcher?.enabled ?? false,
+      links: appSettings.app_switcher?.links ?? [],
     });
     siteSecurityStore.getState().update(appSettings.site_security);
   }

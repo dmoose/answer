@@ -1464,6 +1464,77 @@ const docTemplate = `{
                 }
             }
         },
+        "/answer/admin/api/siteinfo/app-switcher": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "get app switcher config",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "get app switcher config",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/schema.SiteAppSwitcherResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "update app switcher config",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "update app switcher config",
+                "parameters": [
+                    {
+                        "description": "app switcher config",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.SiteAppSwitcherReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
         "/answer/admin/api/siteinfo/branding": {
             "get": {
                 "security": [
@@ -9227,6 +9298,31 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.AppSwitcherLink": {
+            "type": "object",
+            "required": [
+                "name",
+                "url"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "icon": {
+                    "type": "string",
+                    "maxLength": 512
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "url": {
+                    "type": "string",
+                    "maxLength": 512
+                }
+            }
+        },
         "schema.AvatarInfo": {
             "type": "object",
             "properties": {
@@ -11820,6 +11916,34 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.SiteAppSwitcherReq": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.AppSwitcherLink"
+                    }
+                }
+            }
+        },
+        "schema.SiteAppSwitcherResp": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.AppSwitcherLink"
+                    }
+                }
+            }
+        },
         "schema.SiteBrandingReq": {
             "type": "object",
             "properties": {
@@ -11977,6 +12101,9 @@ const docTemplate = `{
             "properties": {
                 "ai_enabled": {
                     "type": "boolean"
+                },
+                "app_switcher": {
+                    "$ref": "#/definitions/schema.SiteAppSwitcherResp"
                 },
                 "branding": {
                     "$ref": "#/definitions/schema.SiteBrandingResp"

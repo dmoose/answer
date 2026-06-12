@@ -534,6 +534,24 @@ definitions:
     required:
     - content
     type: object
+  schema.AppSwitcherLink:
+    properties:
+      description:
+        maxLength: 200
+        type: string
+      icon:
+        maxLength: 512
+        type: string
+      name:
+        maxLength: 64
+        type: string
+      url:
+        maxLength: 512
+        type: string
+    required:
+    - name
+    - url
+    type: object
   schema.AvatarInfo:
     properties:
       custom:
@@ -2324,6 +2342,24 @@ definitions:
       max_image_size:
         type: integer
     type: object
+  schema.SiteAppSwitcherReq:
+    properties:
+      enabled:
+        type: boolean
+      links:
+        items:
+          $ref: '#/definitions/schema.AppSwitcherLink'
+        type: array
+    type: object
+  schema.SiteAppSwitcherResp:
+    properties:
+      enabled:
+        type: boolean
+      links:
+        items:
+          $ref: '#/definitions/schema.AppSwitcherLink'
+        type: array
+    type: object
   schema.SiteBrandingReq:
     properties:
       favicon:
@@ -2438,6 +2474,8 @@ definitions:
     properties:
       ai_enabled:
         type: boolean
+      app_switcher:
+        $ref: '#/definitions/schema.SiteAppSwitcherResp'
       branding:
         $ref: '#/definitions/schema.SiteBrandingResp'
       custom_css_html:
@@ -4333,6 +4371,47 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: update site advanced info
+      tags:
+      - admin
+  /answer/admin/api/siteinfo/app-switcher:
+    get:
+      description: get app switcher config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/schema.SiteAppSwitcherResp'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: get app switcher config
+      tags:
+      - admin
+    put:
+      description: update app switcher config
+      parameters:
+      - description: app switcher config
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.SiteAppSwitcherReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: update app switcher config
       tags:
       - admin
   /answer/admin/api/siteinfo/branding:

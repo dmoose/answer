@@ -460,6 +460,10 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	r.GET("/mcp-config", a.adminSiteInfoController.GetMCPConfig)
 	r.PUT("/mcp-config", a.adminSiteInfoController.UpdateMCPConfig)
 
+	// app switcher
+	r.GET("/siteinfo/app-switcher", a.adminSiteInfoController.GetAppSwitcher)
+	r.PUT("/siteinfo/app-switcher", a.adminSiteInfoController.UpdateAppSwitcher)
+
 	// AI conversation management
 	r.GET("/ai/conversation/page", a.aiConversationAdminController.GetConversationList)
 	r.GET("/ai/conversation", a.aiConversationAdminController.GetConversationDetail)

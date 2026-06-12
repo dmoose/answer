@@ -99,10 +99,18 @@ func NewTranslator(c *I18n) (tr i18n.Translator, err error) {
 			continue
 		}
 
-		// add translator use backend translation
+		// Fail fast only on the default language: it's the fallback every
+		// Tr call lands on, so a nil localizer here panics every request.
+		// Other languages get an error log and skip — losing one locale
+		// shouldn't take the whole site down (e.g. bal_BA has no plural
+		// rule registered in go-i18n).
 		if err = myTran.AddTranslator(content, file.Name()); err != nil {
-			log.Debugf("add translator failed: %s %s", file.Name(), err)
 			reportTranslatorFormatError(file.Name(), buf)
+			langName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			if i18n.Language(langName) == i18n.DefaultLanguage {
+				return nil, fmt.Errorf("add translator failed for default language %s: %w", file.Name(), err)
+			}
+			log.Errorf("add translator failed: %s %v (skipped)", file.Name(), err)
 			continue
 		}
 	}

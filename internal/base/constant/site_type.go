@@ -46,4 +46,5 @@ const (
 	SiteTypeAI            = "ai"
 	SiteTypeFeatureToggle = "feature-toggle"
 	SiteTypeMCP           = "mcp"
+	SiteTypeAppSwitcher   = "app-switcher"
 )

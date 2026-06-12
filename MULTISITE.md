@@ -157,6 +157,12 @@ Patterns codified after live-site bugs that all had the same shape: a context-sc
 - **The default site cannot be deactivated.** `SiteService.SetSiteStatus` refuses to disable `DefaultSiteID`. The resolver also falls back to the lowest-ID active site if the default ever goes missing.
 - **Search is site-scoped by default; opt-in network scope via `?scope=network`.** Server validates the param at the DTO layer (`oneof=site network`) and clears the site_id from context before hitting the repo. Each result carries its origin `site_id` so the UI can render a cross-site badge.
 
+## i18n authoring gotcha
+
+`i18n/*.yaml` is loaded by `LinkinStars/go-i18n` via segmentfault/pacman. Bare key names share a global namespace across the whole bundle: if `foo` appears anywhere as a string leaf, `foo` cannot appear elsewhere as a nested map (and vice-versa). The parse error is `expected value for key "<name>" be a string but got map[...]`. **Flatten new keys with underscores instead of nesting** (`enabled_label: "..."`, not `enabled: { label: "..." }`).
+
+The translator loader now fails fast on bundle errors — bad YAML crashes startup loudly instead of leaving a nil localizer that 502s every request. Earlier upstream behavior was to `log.Debugf` and continue.
+
 ## Known Limitations
 
 - **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs a route group fix for true API-level content protection.

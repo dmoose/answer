@@ -17,16 +17,26 @@
  * under the License.
  */
 
-export * from './answer';
-export * from './flag';
-export * from './question';
-export * from './settings';
-export * from './users';
-export * from './dashboard';
-export * from './plugins';
-export * from './badges';
-export * from './ai';
-export * from './tags';
-export * from './apikeys';
-export * from './mcp';
-export * from './appSwitcher';
+import request from '@/utils/request';
+
+export type AppSwitcherLink = {
+  name: string;
+  description?: string;
+  url: string;
+  icon?: string;
+};
+
+export type AppSwitcherConfig = {
+  enabled: boolean;
+  links: AppSwitcherLink[];
+};
+
+export const getAppSwitcher = () => {
+  return request.get<AppSwitcherConfig>(
+    '/answer/admin/api/siteinfo/app-switcher',
+  );
+};
+
+export const saveAppSwitcher = (params: AppSwitcherConfig) => {
+  return request.put('/answer/admin/api/siteinfo/app-switcher', params);
+};

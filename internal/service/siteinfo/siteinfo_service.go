@@ -31,6 +31,7 @@ import (
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/base/translator"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/config"
 	"github.com/apache/answer/internal/service/export"
@@ -482,6 +483,24 @@ func (s *SiteInfoService) SaveSiteMCP(ctx context.Context, req *schema.SiteMCPRe
 		Status:  1,
 	}
 	return s.siteInfoRepo.SaveByType(ctx, constant.SiteTypeMCP, siteInfo)
+}
+
+// GetSiteAppSwitcher delegates to the common service (which forces global).
+func (s *SiteInfoService) GetSiteAppSwitcher(ctx context.Context) (resp *schema.SiteAppSwitcherResp, err error) {
+	return s.siteInfoCommonService.GetSiteAppSwitcher(ctx)
+}
+
+// SaveSiteAppSwitcher writes the network app switcher list. Forced global
+// (the WithoutSite ctx wipes any site context); per-site override is not
+// supported by design — the switcher is one network-wide list.
+func (s *SiteInfoService) SaveSiteAppSwitcher(ctx context.Context, req *schema.SiteAppSwitcherReq) (err error) {
+	content, _ := json.Marshal(req)
+	siteInfo := &entity.SiteInfo{
+		Type:    constant.SiteTypeAppSwitcher,
+		Content: string(content),
+		Status:  1,
+	}
+	return s.siteInfoRepo.SaveByType(multisite.WithoutSite(ctx), constant.SiteTypeAppSwitcher, siteInfo)
 }
 
 // GetSMTPConfig get smtp config

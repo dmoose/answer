@@ -17,16 +17,32 @@
  * under the License.
  */
 
-export * from './answer';
-export * from './flag';
-export * from './question';
-export * from './settings';
-export * from './users';
-export * from './dashboard';
-export * from './plugins';
-export * from './badges';
-export * from './ai';
-export * from './tags';
-export * from './apikeys';
-export * from './mcp';
-export * from './appSwitcher';
+import { create } from 'zustand';
+
+export interface AppSwitcherLink {
+  name: string;
+  description?: string;
+  url: string;
+  icon?: string;
+}
+
+interface AppSwitcherState {
+  enabled: boolean;
+  links: AppSwitcherLink[];
+  update: (params: { enabled?: boolean; links?: AppSwitcherLink[] }) => void;
+  reset: () => void;
+}
+
+const appSwitcherStore = create<AppSwitcherState>((set) => ({
+  enabled: false,
+  links: [],
+  update: (params) =>
+    set((state) => ({
+      ...state,
+      ...(params.enabled !== undefined && { enabled: params.enabled }),
+      ...(params.links !== undefined && { links: params.links }),
+    })),
+  reset: () => set({ enabled: false, links: [] }),
+}));
+
+export default appSwitcherStore;

@@ -482,6 +482,10 @@ const routes: RouteNode[] = [
             path: 'network-tags',
             page: 'pages/Admin/NetworkTags',
           },
+          {
+            path: 'app-switcher',
+            page: 'pages/Admin/AppSwitcher',
+          },
         ],
       },
       {

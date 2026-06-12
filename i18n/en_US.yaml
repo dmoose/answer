@@ -1842,6 +1842,7 @@ ui:
     ai_settings: AI Settings
     mcp: MCP
     sites: Sites
+    app_switcher: App switcher
   website_welcome: Welcome to {{site_name}}
   user_center:
     login: Login
@@ -2381,6 +2382,21 @@ ui:
       http_header:
         label: HTTP header
         text: Please replace {key} with the API Key.
+    app_switcher:
+      description: A 3x3 grid in the header that lets users jump to related apps. One shared list across all sites in the network.
+      enabled_label: Enable app switcher
+      enabled_text: When off the grid icon is hidden for everyone.
+      add_link: Add app
+      app_title: App
+      app_name_label: Name
+      app_url_label: URL
+      app_description_label: Description
+      app_description_text: Optional. Shown under the name in the dropdown.
+      app_icon_label: Icon URL
+      app_icon_text: Optional. Square image, 32x32 displayed. A generic glyph is used when blank.
+      app_move_up: Move up
+      app_move_down: Move down
+      app_remove: Remove
   form:
     optional: (optional)
     empty: cannot be empty

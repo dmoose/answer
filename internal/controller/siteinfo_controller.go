@@ -90,6 +90,9 @@ func (sc *SiteInfoController) GetSiteInfo(ctx *gin.Context) {
 	if err != nil {
 		log.Error(err)
 	}
+	if appSwitcher, _ := sc.siteInfoService.GetSiteAppSwitcher(ctx); appSwitcher != nil && appSwitcher.Enabled && len(appSwitcher.Links) > 0 {
+		resp.AppSwitcher = appSwitcher
+	}
 	resp.SiteSeo, err = sc.siteInfoService.GetSiteSeo(ctx)
 	if err != nil {
 		log.Error(err)

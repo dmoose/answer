@@ -132,6 +132,7 @@ export const ADMIN_NAV_MENUS = [
       },
       { name: 'branding' },
       { name: 'interface' },
+      { name: 'app_switcher', path: 'app-switcher' },
     ],
   },
   {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/pkg/checker"
 	"github.com/apache/answer/pkg/gravatar"
@@ -66,6 +67,7 @@ type SiteInfoCommonService interface {
 	IsBrandingFileUsed(ctx context.Context, filePath string) bool
 	GetSiteAI(ctx context.Context) (resp *schema.SiteAIResp, err error)
 	GetSiteMCP(ctx context.Context) (resp *schema.SiteMCPResp, err error)
+	GetSiteAppSwitcher(ctx context.Context) (resp *schema.SiteAppSwitcherResp, err error)
 }
 
 // NewSiteInfoCommonService new site info common service
@@ -320,6 +322,17 @@ func (s *siteInfoCommonService) GetSiteAI(ctx context.Context) (resp *schema.Sit
 func (s *siteInfoCommonService) GetSiteMCP(ctx context.Context) (resp *schema.SiteMCPResp, err error) {
 	resp = &schema.SiteMCPResp{}
 	if err = s.GetSiteInfoByType(ctx, constant.SiteTypeMCP, resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetSiteAppSwitcher reads the network app switcher list. Forced global —
+// per-site override is intentionally not supported; the switcher is one
+// network-wide list.
+func (s *siteInfoCommonService) GetSiteAppSwitcher(ctx context.Context) (resp *schema.SiteAppSwitcherResp, err error) {
+	resp = &schema.SiteAppSwitcherResp{}
+	if err = s.GetSiteInfoByType(multisite.WithoutSite(ctx), constant.SiteTypeAppSwitcher, resp); err != nil {
 		return nil, err
 	}
 	return resp, nil

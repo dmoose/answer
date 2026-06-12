@@ -40,6 +40,8 @@ import { Icon, MobileSideNav } from '@/components';
 import NavItems from './components/NavItems';
 import SearchInput from './components/SearchInput';
 import SiteSwitcher from './components/SiteSwitcher';
+import AppSwitcher from './components/AppSwitcher';
+import './components/AppSwitcher/index.scss';
 
 import './index.scss';
 
@@ -214,6 +216,8 @@ const Header: FC = () => {
               )}
             </>
           )}
+
+          <AppSwitcher />
         </div>
 
         {showMobileSearchInput && (

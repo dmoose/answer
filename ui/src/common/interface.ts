@@ -430,6 +430,15 @@ export interface SiteSettings {
   ai_enabled: boolean;
   mcp_enabled?: boolean;
   directory_enabled?: boolean;
+  app_switcher?: {
+    enabled: boolean;
+    links: {
+      name: string;
+      description?: string;
+      url: string;
+      icon?: string;
+    }[];
+  };
 }
 
 export interface AdminSettingBranding {

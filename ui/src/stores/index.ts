@@ -36,6 +36,7 @@ import commentReplyStore from './commentReply';
 import siteSecurityStore from './siteSecurity';
 import aiControlStore from './aiControl';
 import featuresControlStore from './featuresControl';
+import appSwitcherStore from './appSwitcher';
 
 export {
   toastStore,
@@ -57,4 +58,5 @@ export {
   siteSecurityStore,
   aiControlStore,
   featuresControlStore,
+  appSwitcherStore,
 };

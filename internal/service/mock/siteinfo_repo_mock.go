@@ -193,6 +193,21 @@ func (mr *MockSiteInfoCommonServiceMockRecorder) GetSiteAdvanced(ctx any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSiteAdvanced", reflect.TypeOf((*MockSiteInfoCommonService)(nil).GetSiteAdvanced), ctx)
 }
 
+// GetSiteAppSwitcher mocks base method.
+func (m *MockSiteInfoCommonService) GetSiteAppSwitcher(ctx context.Context) (*schema.SiteAppSwitcherResp, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSiteAppSwitcher", ctx)
+	ret0, _ := ret[0].(*schema.SiteAppSwitcherResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSiteAppSwitcher indicates an expected call of GetSiteAppSwitcher.
+func (mr *MockSiteInfoCommonServiceMockRecorder) GetSiteAppSwitcher(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSiteAppSwitcher", reflect.TypeOf((*MockSiteInfoCommonService)(nil).GetSiteAppSwitcher), ctx)
+}
+
 // GetSiteBranding mocks base method.
 func (m *MockSiteInfoCommonService) GetSiteBranding(ctx context.Context) (*schema.SiteBrandingResp, error) {
 	m.ctrl.T.Helper()
