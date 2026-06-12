@@ -23,6 +23,7 @@ import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { Icon } from '@/components';
+import currentSiteStore from '@/stores/currentSite';
 
 const SearchInput: FC<{ className?: string }> = ({ className }) => {
   const { t } = useTranslation('translation', { keyPrefix: 'header' });
@@ -31,6 +32,12 @@ const SearchInput: FC<{ className?: string }> = ({ className }) => {
   const [urlSearch] = useSearchParams();
   const q = urlSearch.get('q');
   const [searchStr, setSearch] = useState('');
+  const currentSite = currentSiteStore((s) => s.currentSite);
+  // Search is site-scoped — reflect that in the placeholder so the user
+  // knows what they're searching, especially after a site switch.
+  const placeholder = currentSite?.name
+    ? `Search ${currentSite.name}`
+    : t('search.placeholder');
   const handleInput = (val) => {
     setSearch(val);
   };
@@ -65,7 +72,7 @@ const SearchInput: FC<{ className?: string }> = ({ className }) => {
       </div>
       <FormControl
         type="search"
-        placeholder={t('search.placeholder')}
+        placeholder={placeholder}
         className="placeholder-search"
         value={searchStr}
         name="q"

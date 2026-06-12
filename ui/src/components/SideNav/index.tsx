@@ -32,6 +32,7 @@ import { Icon, PluginRender } from '@/components';
 import { PluginType } from '@/utils/pluginKit';
 import request from '@/utils/request';
 
+import SiteContextPicker from './SiteContextPicker';
 import './index.scss';
 
 const Index: FC = () => {
@@ -45,6 +46,7 @@ const Index: FC = () => {
 
   return (
     <Nav variant="pills" className="flex-column" id="sideNav">
+      <SiteContextPicker />
       <NavLink
         to="/questions"
         className={({ isActive }) =>

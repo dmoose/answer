@@ -38,7 +38,7 @@ const SiteSwitcher: FC = () => {
   };
 
   return (
-    <Dropdown className="ms-auto me-3">
+    <Dropdown className="ms-auto me-3 d-lg-none">
       <Dropdown.Toggle
         variant="link"
         className="nav-link text-capitalize text-nowrap p-0"
