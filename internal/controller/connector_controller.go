@@ -133,13 +133,14 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		}
 		log.Debugf("connector received: %+v", userInfo)
 		u := &schema.ExternalLoginUserInfoCache{
-			Provider:    connector.ConnectorSlugName(),
-			ExternalID:  userInfo.ExternalID,
-			DisplayName: userInfo.DisplayName,
-			Username:    userInfo.Username,
-			Email:       userInfo.Email,
-			Avatar:      userInfo.Avatar,
-			MetaInfo:    userInfo.MetaInfo,
+			Provider:              connector.ConnectorSlugName(),
+			ExternalID:            userInfo.ExternalID,
+			DisplayName:           userInfo.DisplayName,
+			Username:              userInfo.Username,
+			Email:                 userInfo.Email,
+			Avatar:                userInfo.Avatar,
+			MetaInfo:              userInfo.MetaInfo,
+			UsernameAuthoritative: userInfo.UsernameAuthoritative,
 		}
 		resp, err := cc.userExternalService.ExternalLogin(ctx, u)
 		if err != nil {

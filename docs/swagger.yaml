@@ -1065,6 +1065,12 @@ definitions:
       username:
         description: username
         type: string
+      username_locked:
+        description: |-
+          username is locked because the user was provisioned via an
+          authoritative SSO connector (e.g. fastgate). UI should disable the
+          username field; the API rejects edits regardless.
+        type: boolean
       visit_token:
         description: visit token
         type: string
@@ -3369,6 +3375,12 @@ definitions:
       username:
         description: username
         type: string
+      username_locked:
+        description: |-
+          username is locked because the user was provisioned via an
+          authoritative SSO connector (e.g. fastgate). UI should disable the
+          username field; the API rejects edits regardless.
+        type: boolean
       visit_token:
         description: visit token
         type: string

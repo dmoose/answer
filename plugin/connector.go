@@ -61,6 +61,12 @@ type ExternalLoginUserInfo struct {
 	Avatar string
 	// optional. The original user information provided by the third-party login platform
 	MetaInfo string
+	// optional. When true, Username is the upstream-validated, globally
+	// unique handle and must be applied verbatim — no transform, no dedup
+	// suffix, no random fallback. If it cannot be applied (invalid,
+	// reserved, or collides) the login fails. Connectors set this when
+	// the IdP owns the username namespace.
+	UsernameAuthoritative bool
 }
 
 // ConnectorAfterLogin is an optional interface a Connector can implement to be

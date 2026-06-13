@@ -150,17 +150,25 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		return userInfo, fmt.Errorf("decode userinfo: %w", err)
 	}
 
+	// preferred_username is the fastgate handle: upstream-validated,
+	// globally unique, owned by the IdP. Pass it through verbatim and
+	// flag it so the service layer never transforms or dedup-suffixes.
+	// Fall back to email only if the IdP didn't send a handle (shouldn't
+	// happen with fastgate, but keeps the connector resilient against
+	// other OIDC providers that reuse this connector code).
 	username := claims.PreferredUsername
+	authoritative := username != ""
 	if username == "" {
 		username = claims.Email
 	}
 
 	return plugin.ExternalLoginUserInfo{
-		ExternalID:  claims.Sub,
-		DisplayName: claims.Name,
-		Username:    username,
-		Email:       claims.Email,
-		Avatar:      claims.Picture,
+		ExternalID:            claims.Sub,
+		DisplayName:           claims.Name,
+		Username:              username,
+		Email:                 claims.Email,
+		Avatar:                claims.Picture,
+		UsernameAuthoritative: authoritative,
 	}, nil
 }
 

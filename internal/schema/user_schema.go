@@ -101,6 +101,10 @@ type UserLoginResp struct {
 	VisitToken string `json:"visit_token"`
 	// suspended until timestamp
 	SuspendedUntil int64 `json:"suspended_until"`
+	// username is locked because the user was provisioned via an
+	// authoritative SSO connector (e.g. fastgate). UI should disable the
+	// username field; the API rejects edits regardless.
+	UsernameLocked bool `json:"username_locked"`
 }
 
 func (r *UserLoginResp) ConvertFromUserEntity(userInfo *entity.User) {

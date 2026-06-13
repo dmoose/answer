@@ -10060,6 +10060,10 @@ const docTemplate = `{
                     "description": "username",
                     "type": "string"
                 },
+                "username_locked": {
+                    "description": "username is locked because the user was provisioned via an\nauthoritative SSO connector (e.g. fastgate). UI should disable the\nusername field; the API rejects edits regardless.",
+                    "type": "boolean"
+                },
                 "visit_token": {
                     "description": "visit token",
                     "type": "string"
@@ -13397,6 +13401,10 @@ const docTemplate = `{
                 "username": {
                     "description": "username",
                     "type": "string"
+                },
+                "username_locked": {
+                    "description": "username is locked because the user was provisioned via an\nauthoritative SSO connector (e.g. fastgate). UI should disable the\nusername field; the API rejects edits regardless.",
+                    "type": "boolean"
                 },
                 "visit_token": {
                     "description": "visit token",

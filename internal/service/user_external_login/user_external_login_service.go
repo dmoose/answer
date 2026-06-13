@@ -203,16 +203,50 @@ func callConnectorAfterLogin(ctx context.Context, provider, externalID, localUse
 	})
 }
 
+// applyAuthoritativeUsername enforces the contract for connectors that set
+// ExternalLoginUserInfo.UsernameAuthoritative: take the handle as-is, fail
+// loudly on any reason it can't be applied. No transform, no suffix, no
+// random fallback. Collisions and validation failures surface as errors
+// so config drift gets caught instead of hidden.
+func (us *UserExternalLoginService) applyAuthoritativeUsername(ctx context.Context, handle string) (string, error) {
+	if handle == "" {
+		return "", errors.BadRequest(reason.UsernameInvalid).WithMsg("authoritative username is empty")
+	}
+	if checker.IsInvalidUsername(handle) {
+		return "", errors.BadRequest(reason.UsernameInvalid).WithMsg(fmt.Sprintf("authoritative username %q failed local validation", handle))
+	}
+	if checker.IsReservedUsername(handle) {
+		return "", errors.BadRequest(reason.UsernameInvalid).WithMsg(fmt.Sprintf("authoritative username %q is reserved locally", handle))
+	}
+	_, exists, err := us.userRepo.GetByUsername(ctx, handle)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		return "", errors.BadRequest(reason.UsernameDuplicate).WithMsg(fmt.Sprintf("authoritative username %q already taken locally", handle))
+	}
+	return handle, nil
+}
+
 func (us *UserExternalLoginService) registerNewUser(ctx context.Context,
 	externalUserInfo *schema.ExternalLoginUserInfoCache) (userInfo *entity.User, err error) {
 	userInfo = &entity.User{}
 	userInfo.EMail = externalUserInfo.Email
 	userInfo.DisplayName = externalUserInfo.DisplayName
 
-	userInfo.Username, err = us.userCommonService.MakeUsername(ctx, externalUserInfo.Username)
-	if err != nil {
-		log.Error(err)
-		userInfo.Username = random.Username()
+	if externalUserInfo.UsernameAuthoritative {
+		// Upstream provider owns the handle. Apply verbatim or fail —
+		// no transform, no dedup suffix, no random fallback.
+		userInfo.Username, err = us.applyAuthoritativeUsername(ctx, externalUserInfo.Username)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		userInfo.Username, err = us.userCommonService.MakeUsername(ctx, externalUserInfo.Username)
+		if err != nil {
+			log.Error(err)
+			userInfo.Username = random.Username()
+		}
 	}
 
 	if len(externalUserInfo.Avatar) > 0 {

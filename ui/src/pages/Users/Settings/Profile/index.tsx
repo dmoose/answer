@@ -331,6 +331,7 @@ const Index: React.FC = () => {
             <Form.Control
               required
               type="text"
+              disabled={user.username_locked}
               value={formData.username.value}
               isInvalid={formData.username.isInvalid}
               onChange={(e) =>
@@ -343,7 +344,11 @@ const Index: React.FC = () => {
                 })
               }
             />
-            <Form.Text as="div">{t('username.caption')}</Form.Text>
+            <Form.Text as="div">
+              {user.username_locked
+                ? t('username.locked_caption')
+                : t('username.caption')}
+            </Form.Text>
             <Form.Control.Feedback type="invalid">
               {formData.username.errorMsg}
             </Form.Control.Feedback>

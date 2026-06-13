@@ -73,6 +73,8 @@ type ExternalLoginUserInfoCache struct {
 	MetaInfo string
 	// optional. The bio provided by the third-party login platform
 	Bio string
+	// optional. See plugin.ExternalLoginUserInfo.UsernameAuthoritative.
+	UsernameAuthoritative bool
 }
 
 // ExternalLoginUnbindingReq external login unbinding user

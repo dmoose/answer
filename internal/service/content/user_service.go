@@ -128,7 +128,26 @@ func (us *UserService) GetUserInfoByUserID(ctx context.Context, token, userID st
 	resp.Avatar = us.siteInfoService.FormatAvatar(ctx, userInfo.Avatar, userInfo.EMail, userInfo.Status)
 	resp.AccessToken = token
 	resp.HavePassword = len(userInfo.Pass) > 0
+	resp.UsernameLocked = us.hasAuthoritativeBinding(ctx, userID)
 	return resp, nil
+}
+
+// hasAuthoritativeBinding reports whether the user has a binding to a
+// connector listed in authoritativeUsernameProviders. Used to populate
+// UsernameLocked on the current-user response so the UI can disable the
+// field without a second round-trip.
+func (us *UserService) hasAuthoritativeBinding(ctx context.Context, userID string) bool {
+	bindings, err := us.userExternalLoginService.GetExternalLoginUserInfoList(ctx, userID)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	for _, b := range bindings {
+		if authoritativeUsernameProviders[b.Provider] {
+			return true
+		}
+	}
+	return false
 }
 
 func (us *UserService) GetOtherUserInfoByUsername(ctx context.Context, req *schema.GetOtherUserInfoByUsernameReq) (
@@ -311,10 +330,61 @@ func (us *UserService) UserModifyPassword(ctx context.Context, req *schema.UserM
 	return nil
 }
 
+// authoritativeUsernameProviders lists connector slugs whose Username
+// claim is upstream-validated and globally owned. Users with a binding to
+// any of these connectors get their local username locked. Future fork
+// connectors that emit UsernameAuthoritative=true should be added here.
+var authoritativeUsernameProviders = map[string]bool{
+	"fastgate-connector": true,
+}
+
+func (us *UserService) usernameLockedForSSO(ctx context.Context, userID, requested string) (bool, error) {
+	bindings, err := us.userExternalLoginService.GetExternalLoginUserInfoList(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	hasAuthoritative := false
+	for _, b := range bindings {
+		if authoritativeUsernameProviders[b.Provider] {
+			hasAuthoritative = true
+			break
+		}
+	}
+	if !hasAuthoritative {
+		return false, nil
+	}
+	// Lock only when the request actually attempts to change the
+	// username. Self-PUTs of the same value (common from form-state UIs)
+	// shouldn't fail.
+	current, exist, err := us.userRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	if !exist {
+		return false, nil
+	}
+	return current.Username != requested, nil
+}
+
 // UpdateInfo update user info
 func (us *UserService) UpdateInfo(ctx context.Context, req *schema.UpdateInfoRequest) (
 	errFields []*validator.FormErrorField, err error) {
 	if len(req.Username) > 0 {
+		// SSO-provisioned users can't change their username — the IdP
+		// owns the handle. Reject the field if the user has a binding to
+		// a connector whose handles are authoritative (currently only
+		// the fastgate connector; expand the check when more connectors
+		// adopt UsernameAuthoritative).
+		locked, err := us.usernameLockedForSSO(ctx, req.UserID, req.Username)
+		if err != nil {
+			return nil, err
+		}
+		if locked {
+			return append(errFields, &validator.FormErrorField{
+				ErrorField: "username",
+				ErrorMsg:   reason.UsernameInvalid,
+			}), errors.BadRequest(reason.UsernameInvalid).WithMsg("username is managed by the identity provider")
+		}
 		if checker.IsInvalidUsername(req.Username) {
 			return append(errFields, &validator.FormErrorField{
 				ErrorField: "username",
