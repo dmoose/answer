@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/apache/answer/configs"
@@ -47,12 +48,14 @@ func initReservedUsername() {
 	var usernames []string
 	_ = json.Unmarshal(configs.ReservedUsernames, &usernames)
 	for _, username := range usernames {
-		reservedUsernameMapping[username] = true
+		reservedUsernameMapping[strings.ToLower(username)] = true
 	}
 }
 
-// IsReservedUsername checks whether the username is reserved
+// IsReservedUsername checks whether the username is reserved. The comparison
+// is case-insensitive: on case-sensitive stores (SQLite/Postgres) "Admin"
+// would otherwise coexist with the reserved "admin".
 func IsReservedUsername(username string) bool {
 	reservedUsernameInit.Do(initReservedUsername)
-	return reservedUsernameMapping[username]
+	return reservedUsernameMapping[strings.ToLower(username)]
 }

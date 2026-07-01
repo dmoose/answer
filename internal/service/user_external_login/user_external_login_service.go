@@ -30,6 +30,7 @@ import (
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/base/translator"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/activity"
 	"github.com/apache/answer/internal/service/export"
@@ -183,24 +184,30 @@ func (us *UserExternalLoginService) ExternalLogin(
 }
 
 // callConnectorAfterLogin fires the optional plugin.ConnectorAfterLogin hook
-// on the matching connector. Errors are logged; they never block login.
+// on the matching connector. Runs asynchronously: the hook is best-effort
+// (identity reporting back to the IdP) and a slow IdP must not add its
+// timeout to every SSO login. Errors are logged; they never block login.
 func callConnectorAfterLogin(ctx context.Context, provider, externalID, localUserID string) {
 	if provider == "" || externalID == "" || localUserID == "" {
 		return
 	}
-	_ = plugin.CallConnector(func(c plugin.Connector) error {
-		if c.ConnectorSlugName() != provider {
+	// Detach from the request context: the hook outlives the login request.
+	hookCtx := multisite.WithSiteID(context.Background(), multisite.SiteIDFromContext(ctx))
+	go func() {
+		_ = plugin.CallConnector(func(c plugin.Connector) error {
+			if c.ConnectorSlugName() != provider {
+				return nil
+			}
+			hook, ok := c.(plugin.ConnectorAfterLogin)
+			if !ok {
+				return nil
+			}
+			if err := hook.AfterLogin(hookCtx, externalID, localUserID); err != nil {
+				log.Errorf("connector %s AfterLogin: %v", provider, err)
+			}
 			return nil
-		}
-		hook, ok := c.(plugin.ConnectorAfterLogin)
-		if !ok {
-			return nil
-		}
-		if err := hook.AfterLogin(ctx, externalID, localUserID); err != nil {
-			log.Errorf("connector %s AfterLogin: %v", provider, err)
-		}
-		return nil
-	})
+		})
+	}()
 }
 
 // applyAuthoritativeUsername enforces the contract for connectors that set

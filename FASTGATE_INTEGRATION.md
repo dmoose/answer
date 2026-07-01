@@ -10,8 +10,24 @@ fastgate's `docs/DESIGN.md` §21–22 (identity directory, off-board hook).
 
 `internal/plugins/fastgate_connector/connector.go`
 
-Standard OIDC authorization code flow against fastgate. Three config fields
-(set in **Admin → Plugins → Fastgate**):
+Standard OIDC authorization code flow against fastgate, hardened:
+
+- **Per-request `state`** (server-side, single-use, 10-min TTL) plus a
+  browser-bind cookie (`fg_oidc_bind`) — a callback URL can only complete
+  in the browser that started the login, and never twice.
+- **PKCE (S256)** and a per-request **`nonce`**.
+- **ID token fully validated**: EdDSA signature against fastgate's `/jwks`
+  (cached 1h), `iss`, `aud`, `exp`/`iat`, and the nonce. The userinfo
+  subject must match the ID token subject.
+- **Email trust:** Answer's core binds existing accounts by email alone, so
+  the connector forwards the email claim **only when `email_verified` is
+  true** in both the ID token and userinfo. Fastgate emails are verified by
+  construction (magic-link login), so this is belt-and-suspenders — but the
+  invariant is now enforced, not assumed.
+- Token/userinfo/JWKS calls use a 10-second timeout client bound to the
+  request context.
+
+Three config fields (set in **Admin → Plugins → Fastgate**):
 
 | Field | Value |
 |---|---|
@@ -40,7 +56,32 @@ Content-Type: application/json
 - 5-second client timeout; failures log a warning, never block login.
 - Idempotent: re-posts on every login, fastgate refreshes `last_reported_at`.
 
-### 3. Atomic session invalidation on deactivation
+### 3. Fastgate handle = Answer username, verbatim and locked
+
+The `preferred_username` claim from fastgate is the canonical Answer
+username. The connector emits `ExternalLoginUserInfo.UsernameAuthoritative
+= true` when a handle is present; the service layer then:
+
+- Applies the handle **verbatim** — no lowercase transform, no space→dash,
+  no dedup suffix, no random fallback.
+- Surfaces an error (never silently renames) if the handle is invalid,
+  reserved locally, or collides. Config drift is caught, not hidden.
+- Locks username edits (both UI and API) for users bound to any
+  connector in `authoritativeUsernameProviders` (currently
+  `fastgate-connector`). The current-user response carries
+  `username_locked: true`; the Profile settings input is disabled.
+- Display name (`name` claim) stays user-editable — cosmetic only.
+
+Account matching still keys on `(provider, ExternalID = sub)`, so email
+changes and re-logins resolve to the same account. The handle is not
+part of the match — only the display.
+
+Fastgate is expected to enforce handle uniqueness and validity upstream
+(fastgate regex is a strict subset of Answer's, so validation collisions
+should only occur if fastgate expands its allowed set beyond Answer's
+`^[\w.\- ]{2,30}$`).
+
+### 4. Atomic session invalidation on deactivation
 
 `internal/service/user_admin/user_backyard.go`:`UpdateUserStatus` calls
 `RemoveUserAllTokens(userID)` when the new status is `deleted`, `suspended`,
@@ -48,7 +89,7 @@ or `inactive`. Without this, an admin status change waits up to the 7-day
 `UserTokenCacheTime` for sessions to expire. With this, sessions die at the
 DB write.
 
-### 4. Off-boarding endpoint (consumed by fastgate's exec hook)
+### 5. Off-boarding endpoint (consumed by fastgate's exec hook)
 
 ```
 PUT  {ANSWER_BASE}/answer/api/v1/admin/user/status

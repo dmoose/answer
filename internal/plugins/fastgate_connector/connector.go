@@ -22,6 +22,7 @@ package fastgate_connector
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,7 +36,10 @@ import (
 )
 
 type Connector struct {
-	Config *ConnectorConfig
+	Config  *ConnectorConfig
+	pending *pendingStore
+	jwks    *jwksCache
+	client  *http.Client
 }
 
 type ConnectorConfig struct {
@@ -46,7 +50,10 @@ type ConnectorConfig struct {
 
 func init() {
 	plugin.Register(&Connector{
-		Config: &ConnectorConfig{},
+		Config:  &ConnectorConfig{},
+		pending: newPendingStore(),
+		jwks:    &jwksCache{},
+		client:  &http.Client{Timeout: 10 * time.Second},
 	})
 }
 
@@ -75,12 +82,37 @@ func (c *Connector) ConnectorSender(ctx *plugin.GinContext, receiverURL string) 
 	issuer := c.Config.Issuer
 	authURL := issuer + "/authorize"
 
+	state, err1 := randomToken()
+	nonce, err2 := randomToken()
+	verifier, err3 := randomToken()
+	bind, err4 := randomToken()
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+		log.Errorf("fastgate connector: generating login secrets failed: %v %v %v %v", err1, err2, err3, err4)
+		return ""
+	}
+
+	c.pending.put(state, pendingAuth{
+		nonce:    nonce,
+		verifier: verifier,
+		bind:     bind,
+		expires:  time.Now().Add(pendingTTL),
+	})
+
+	// Bind the attempt to this browser: the callback must present the same
+	// cookie, so a stolen/forced callback URL can't complete elsewhere.
+	secure := ctx.Request.TLS != nil || strings.EqualFold(ctx.GetHeader("X-Forwarded-Proto"), "https")
+	ctx.SetSameSite(http.SameSiteLaxMode)
+	ctx.SetCookie(bindCookieName, bind, int(pendingTTL.Seconds()), "/", "", secure, true)
+
 	params := url.Values{
-		"client_id":     {c.Config.ClientID},
-		"redirect_uri":  {receiverURL},
-		"response_type": {"code"},
-		"scope":         {"openid email profile"},
-		"state":         {receiverURL},
+		"client_id":             {c.Config.ClientID},
+		"redirect_uri":          {receiverURL},
+		"response_type":         {"code"},
+		"scope":                 {"openid email profile"},
+		"state":                 {state},
+		"nonce":                 {nonce},
+		"code_challenge":        {pkceChallengeS256(verifier)},
+		"code_challenge_method": {"S256"},
 	}
 	return authURL + "?" + params.Encode()
 }
@@ -91,23 +123,41 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		return userInfo, fmt.Errorf("missing authorization code")
 	}
 
+	// The state must be one we issued (single-use, unexpired) and the
+	// browser must carry the bind cookie from the same attempt.
+	state := ctx.Query("state")
+	if state == "" {
+		return userInfo, fmt.Errorf("missing state")
+	}
+	pend, ok := c.pending.take(state)
+	if !ok {
+		return userInfo, fmt.Errorf("unknown, expired or replayed state")
+	}
+	bind, err := ctx.Cookie(bindCookieName)
+	if err != nil || subtle.ConstantTimeCompare([]byte(bind), []byte(pend.bind)) != 1 {
+		return userInfo, fmt.Errorf("login attempt not bound to this browser")
+	}
+	ctx.SetSameSite(http.SameSiteLaxMode)
+	ctx.SetCookie(bindCookieName, "", -1, "/", "", false, true)
+
 	// Exchange code for tokens
 	tokenURL := c.Config.Issuer + "/token"
 	data := url.Values{
-		"grant_type":   {"authorization_code"},
-		"code":         {code},
-		"redirect_uri": {receiverURL},
-		"client_id":    {c.Config.ClientID},
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {receiverURL},
+		"client_id":     {c.Config.ClientID},
+		"code_verifier": {pend.verifier},
 	}
 
-	req, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx.Request.Context(), "POST", tokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return userInfo, fmt.Errorf("create token request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(c.Config.ClientID, c.Config.ClientSecret)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return userInfo, fmt.Errorf("token exchange: %w", err)
 	}
@@ -125,23 +175,39 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return userInfo, fmt.Errorf("decode token response: %w", err)
 	}
+	if tokenResp.IDToken == "" {
+		return userInfo, fmt.Errorf("token response missing id_token")
+	}
 
-	// Fetch user info
-	uiReq, err := http.NewRequest("GET", c.Config.Issuer+"/userinfo", nil)
+	// The ID token is the authenticated identity assertion: verify its
+	// signature against the issuer's JWKS plus iss/aud/exp/iat/nonce.
+	idClaims, err := verifyIDToken(c.client, c.jwks, c.Config.Issuer, c.Config.ClientID, tokenResp.IDToken, pend.nonce)
+	if err != nil {
+		return userInfo, fmt.Errorf("id_token rejected: %w", err)
+	}
+
+	// Fetch user info (profile fields the ID token doesn't carry).
+	uiReq, err := http.NewRequestWithContext(ctx.Request.Context(), "GET", c.Config.Issuer+"/userinfo", nil)
 	if err != nil {
 		return userInfo, fmt.Errorf("create userinfo request: %w", err)
 	}
 	uiReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
 
-	uiResp, err := http.DefaultClient.Do(uiReq)
+	uiResp, err := c.client.Do(uiReq)
 	if err != nil {
 		return userInfo, fmt.Errorf("userinfo request: %w", err)
 	}
 	defer func() { _ = uiResp.Body.Close() }()
 
+	if uiResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(uiResp.Body)
+		return userInfo, fmt.Errorf("userinfo failed (%d): %s", uiResp.StatusCode, body)
+	}
+
 	var claims struct {
 		Sub               string `json:"sub"`
 		Email             string `json:"email"`
+		EmailVerified     bool   `json:"email_verified"`
 		Name              string `json:"name"`
 		PreferredUsername string `json:"preferred_username"`
 		Picture           string `json:"picture"`
@@ -149,24 +215,35 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	if err := json.NewDecoder(uiResp.Body).Decode(&claims); err != nil {
 		return userInfo, fmt.Errorf("decode userinfo: %w", err)
 	}
+	if claims.Sub != idClaims.Sub {
+		return userInfo, fmt.Errorf("userinfo subject %q does not match id_token subject", claims.Sub)
+	}
 
 	// preferred_username is the fastgate handle: upstream-validated,
 	// globally unique, owned by the IdP. Pass it through verbatim and
 	// flag it so the service layer never transforms or dedup-suffixes.
 	// Fall back to email only if the IdP didn't send a handle (shouldn't
-	// happen with fastgate, but keeps the connector resilient against
-	// other OIDC providers that reuse this connector code).
+	// happen with fastgate, but keeps the connector resilient if the
+	// handle requirement is ever relaxed upstream).
 	username := claims.PreferredUsername
 	authoritative := username != ""
 	if username == "" {
 		username = claims.Email
 	}
 
+	// The core binds existing accounts by email alone, so per the plugin
+	// contract the email is only forwarded when the IdP asserts it is
+	// verified (fastgate always does; both sources must agree).
+	email := claims.Email
+	if !claims.EmailVerified || !idClaims.EmailVerified {
+		email = ""
+	}
+
 	return plugin.ExternalLoginUserInfo{
-		ExternalID:            claims.Sub,
+		ExternalID:            idClaims.Sub,
 		DisplayName:           claims.Name,
 		Username:              username,
-		Email:                 claims.Email,
+		Email:                 email,
 		Avatar:                claims.Picture,
 		UsernameAuthoritative: authoritative,
 	}, nil
