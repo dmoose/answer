@@ -119,7 +119,6 @@ var ProviderSetRepo = wire.NewSet(
 	api_key.NewAPIKeyRepo,
 	ai_conversation.NewAIConversationRepo,
 	site.NewSiteRepo,
-	rank.NewUserSiteRankRepo,
 	role.NewUserSiteRoleRelRepo,
 	network_profile.NewNetworkProfileRepo,
 	network_project.NewNetworkProjectRepo,

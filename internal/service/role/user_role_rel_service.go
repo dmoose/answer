@@ -104,17 +104,28 @@ func (us *UserRoleRelService) GetUserRoleRelMapping(ctx context.Context, userIDs
 	return userRoleRelMapping, nil
 }
 
-// GetUserRole get user role
+// GetUserRole get user role, resolved for the sub-site carried by ctx: a
+// per-site role can raise (never lower) the user's global role on that site.
 func (us *UserRoleRelService) GetUserRole(ctx context.Context, userID string) (roleID int, err error) {
+	globalRole, err := us.GetUserGlobalRole(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	return us.getEffectiveRole(ctx, userID, globalRole), nil
+}
+
+// GetUserGlobalRole get the user's network-wide role, ignoring any per-site
+// escalation. Network-global authority (the admin API, the admin token
+// cache) must gate on this, never on a site-escalated role.
+func (us *UserRoleRelService) GetUserGlobalRole(ctx context.Context, userID string) (roleID int, err error) {
 	rolePowerRel, exist, err := us.userRoleRelRepo.GetUserRoleRel(ctx, userID)
 	if err != nil {
 		return 0, err
 	}
-	globalRole := RoleUserID
 	if exist {
-		globalRole = rolePowerRel.RoleID
+		return rolePowerRel.RoleID, nil
 	}
-	return us.getEffectiveRole(ctx, userID, globalRole), nil
+	return RoleUserID, nil
 }
 
 // GetUserByRoleID get user by role id

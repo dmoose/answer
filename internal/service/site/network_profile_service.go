@@ -23,15 +23,14 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/apache/answer/internal/entity"
 	"github.com/apache/answer/internal/repo/network_profile"
 	"github.com/apache/answer/internal/repo/network_project"
 	"github.com/apache/answer/internal/repo/profile_tag"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/network_directory"
-	"github.com/apache/answer/internal/service/rank"
 	"github.com/apache/answer/internal/service/service_config"
 	usercommon "github.com/apache/answer/internal/service/user_common"
+	"github.com/segmentfault/pacman/log"
 )
 
 type NetworkProfileSiteRank struct {
@@ -65,7 +64,6 @@ type NetworkProfile struct {
 type NetworkProfileService struct {
 	userCommon         *usercommon.UserCommon
 	siteRepo           SiteRepo
-	siteRankRepo       rank.SiteRankRepo
 	networkProfileRepo *network_profile.NetworkProfileRepo
 	networkProjectRepo *network_project.NetworkProjectRepo
 	profileTagRepo     *profile_tag.ProfileTagRepo
@@ -75,7 +73,6 @@ type NetworkProfileService struct {
 func NewNetworkProfileService(
 	userCommon *usercommon.UserCommon,
 	siteRepo SiteRepo,
-	siteRankRepo rank.SiteRankRepo,
 	networkProfileRepo *network_profile.NetworkProfileRepo,
 	networkProjectRepo *network_project.NetworkProjectRepo,
 	profileTagRepo *profile_tag.ProfileTagRepo,
@@ -84,7 +81,6 @@ func NewNetworkProfileService(
 	return &NetworkProfileService{
 		userCommon:         userCommon,
 		siteRepo:           siteRepo,
-		siteRankRepo:       siteRankRepo,
 		networkProfileRepo: networkProfileRepo,
 		networkProjectRepo: networkProjectRepo,
 		profileTagRepo:     profileTagRepo,
@@ -115,24 +111,9 @@ func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID st
 		Projects:      []*schema.ProfileProjectInfo{},
 	}
 
-	if s.siteRankRepo != nil {
-		ranks, rerr := s.siteRankRepo.GetUserAllSiteRanks(ctx, userID)
-		if rerr == nil {
-			sites, _ := s.siteRepo.GetAllSites(ctx)
-			siteMap := make(map[string]*entity.Site, len(sites))
-			for _, st := range sites {
-				siteMap[st.ID] = st
-			}
-			for _, r := range ranks {
-				sr := &NetworkProfileSiteRank{SiteID: r.SiteID, Rank: r.Rank}
-				if st, ok := siteMap[r.SiteID]; ok {
-					sr.SiteName = st.Name
-					sr.SiteSlug = st.Slug
-				}
-				profile.SiteRanks = append(profile.SiteRanks, sr)
-			}
-		}
-	}
+	// SiteRanks intentionally stays empty: reputation is global (one rank
+	// per person). Per-site attribution for display (Option C) can be
+	// derived later from activity.site_id — SUM(rank) GROUP BY site_id.
 
 	// Extended directory fields skipped when the feature is disabled — the
 	// frontend likewise hides UI in that mode, so leaving these empty keeps
@@ -144,6 +125,9 @@ func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID st
 
 	if s.networkProfileRepo != nil {
 		np, _, perr := s.networkProfileRepo.Get(ctx, userID)
+		if perr != nil {
+			log.Errorf("network profile fetch for user %s: %v", userID, perr)
+		}
 		if perr == nil && np != nil {
 			profile.Headline = np.Headline
 			profile.Pronouns = np.Pronouns
@@ -159,8 +143,14 @@ func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID st
 
 	if s.profileTagRepo != nil {
 		tagIDs, terr := s.profileTagRepo.GetUserTags(ctx, userID)
+		if terr != nil {
+			log.Errorf("profile tags fetch for user %s: %v", userID, terr)
+		}
 		if terr == nil && len(tagIDs) > 0 {
 			tags, gerr := s.profileTagRepo.GetByIDs(ctx, tagIDs)
+			if gerr != nil {
+				log.Errorf("profile tag resolve for user %s: %v", userID, gerr)
+			}
 			if gerr == nil {
 				for _, t := range tags {
 					profile.Tags = append(profile.Tags, network_directory.TagInfo(t))
@@ -171,6 +161,9 @@ func (s *NetworkProfileService) GetNetworkProfile(ctx context.Context, userID st
 
 	if s.networkProjectRepo != nil {
 		projects, perr := s.networkProjectRepo.ListByUser(ctx, userID)
+		if perr != nil {
+			log.Errorf("network projects fetch for user %s: %v", userID, perr)
+		}
 		if perr == nil {
 			for _, p := range projects {
 				profile.Projects = append(profile.Projects, network_directory.ProjectInfo(p))

@@ -225,7 +225,11 @@ func (us *UserCommon) MakeUsername(ctx context.Context, displayName string) (use
 
 func (us *UserCommon) CacheLoginUserInfo(ctx context.Context, userID string, userStatus, emailStatus int, externalID string) (
 	accessToken string, userCacheInfo *entity.UserCacheInfo, err error) {
-	roleID, err := us.userRoleService.GetUserRole(ctx, userID)
+	// The token cache stores the GLOBAL role: the admin-cache gate below is
+	// network-wide authority, and the auth middleware re-resolves the
+	// effective per-site role on every request anyway. Baking a
+	// site-escalated role here would leak board authority network-wide.
+	roleID, err := us.userRoleService.GetUserGlobalRole(ctx, userID)
 	if err != nil {
 		log.Error(err)
 	}

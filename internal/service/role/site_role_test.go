@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/apache/answer/internal/base/constant"
+	"github.com/apache/answer/internal/entity"
 )
 
 type mockSiteRoleRepo struct {
@@ -97,5 +98,85 @@ func TestGetEffectiveRole_NoSiteContext(t *testing.T) {
 	got := svc.getEffectiveRole(context.Background(), "user-1", RoleModeratorID)
 	if got != RoleModeratorID {
 		t.Errorf("got %d, want %d (no site = global)", got, RoleModeratorID)
+	}
+}
+
+// A moderator of site A holds no authority on site B: board authority is an
+// explicit per-site appointment, resolved against the request's site.
+func TestGetEffectiveRole_ModeratorOfADoesNotModerateB(t *testing.T) {
+	repo := &mockSiteRoleRepo{
+		roles: map[string]map[string]int{
+			"user-1": {"site-a": RoleModeratorID},
+		},
+	}
+	svc := &UserRoleRelService{siteRoleRepo: repo}
+
+	ctx := context.WithValue(context.Background(), constant.SiteIDContextKey, "site-b")
+	got := svc.getEffectiveRole(ctx, "user-1", RoleUserID)
+	if got != RoleUserID {
+		t.Errorf("got %d, want %d (site-a moderator is a plain user on site-b)", got, RoleUserID)
+	}
+}
+
+type erroringSiteRoleRepo struct{}
+
+func (erroringSiteRoleRepo) GetUserSiteRole(context.Context, string, string) (int, bool, error) {
+	return RoleAdminID, true, context.DeadlineExceeded
+}
+func (erroringSiteRoleRepo) SaveUserSiteRole(context.Context, string, string, int) error {
+	return nil
+}
+
+// A failed site-role read must never grant the (possibly elevated) site
+// role — it falls back to the global baseline.
+func TestGetEffectiveRole_ErrorFallsBackToGlobalNeverElevates(t *testing.T) {
+	svc := &UserRoleRelService{siteRoleRepo: erroringSiteRoleRepo{}}
+
+	ctx := context.WithValue(context.Background(), constant.SiteIDContextKey, "site-a")
+	got := svc.getEffectiveRole(ctx, "user-1", RoleUserID)
+	if got != RoleUserID {
+		t.Errorf("got %d, want %d (error must not elevate)", got, RoleUserID)
+	}
+}
+
+type stubGlobalRoleRepo struct {
+	roleID int
+	exist  bool
+}
+
+func (s stubGlobalRoleRepo) SaveUserRoleRel(context.Context, string, int) error { return nil }
+func (s stubGlobalRoleRepo) GetUserRoleRelList(context.Context, []string) ([]*entity.UserRoleRel, error) {
+	return nil, nil
+}
+func (s stubGlobalRoleRepo) GetUserRoleRelListByRoleID(context.Context, []int) ([]*entity.UserRoleRel, error) {
+	return nil, nil
+}
+func (s stubGlobalRoleRepo) GetUserRoleRel(context.Context, string) (*entity.UserRoleRel, bool, error) {
+	return &entity.UserRoleRel{RoleID: s.roleID}, s.exist, nil
+}
+
+// GetUserGlobalRole must ignore per-site escalation entirely: the admin API
+// and admin token cache are network-wide authority.
+func TestGlobalRoleIgnoresSiteEscalation(t *testing.T) {
+	siteRepo := &mockSiteRoleRepo{
+		roles: map[string]map[string]int{
+			"user-1": {"site-a": RoleAdminID},
+		},
+	}
+	svc := &UserRoleRelService{
+		userRoleRelRepo: stubGlobalRoleRepo{roleID: RoleUserID, exist: true},
+		siteRoleRepo:    siteRepo,
+	}
+
+	ctx := context.WithValue(context.Background(), constant.SiteIDContextKey, "site-a")
+
+	effective, err := svc.GetUserRole(ctx, "user-1")
+	if err != nil || effective != RoleAdminID {
+		t.Errorf("GetUserRole = %d, %v; want site-escalated %d", effective, err, RoleAdminID)
+	}
+
+	global, err := svc.GetUserGlobalRole(ctx, "user-1")
+	if err != nil || global != RoleUserID {
+		t.Errorf("GetUserGlobalRole = %d, %v; want un-escalated %d", global, err, RoleUserID)
 	}
 }

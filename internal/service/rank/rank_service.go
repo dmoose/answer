@@ -64,7 +64,6 @@ type RankService struct {
 	objectInfoService *object_info.ObjService
 	roleService       *role.UserRoleRelService
 	rolePowerService  *role.RolePowerRelService
-	siteRankRepo      SiteRankRepo
 }
 
 // NewRankService new rank service
@@ -74,8 +73,7 @@ func NewRankService(
 	objectInfoService *object_info.ObjService,
 	roleService *role.UserRoleRelService,
 	rolePowerService *role.RolePowerRelService,
-	configService *config.ConfigService,
-	siteRankRepo SiteRankRepo) *RankService {
+	configService *config.ConfigService) *RankService {
 	return &RankService{
 		userCommon:        userCommon,
 		configService:     configService,
@@ -83,7 +81,6 @@ func NewRankService(
 		objectInfoService: objectInfoService,
 		roleService:       roleService,
 		rolePowerService:  rolePowerService,
-		siteRankRepo:      siteRankRepo,
 	}
 }
 
@@ -119,8 +116,7 @@ func (rs *RankService) CheckOperationPermission(ctx context.Context, userID stri
 		}
 	}
 
-	effectiveRank := rs.getUserRankForPermission(ctx, userInfo.ID, userInfo.Rank)
-	can, _ = rs.checkUserRank(ctx, userInfo.ID, effectiveRank, PermissionPrefix+action)
+	can, _ = rs.checkUserRank(ctx, userInfo.ID, userInfo.Rank, PermissionPrefix+action)
 	return can, nil
 }
 
@@ -142,14 +138,13 @@ func (rs *RankService) CheckOperationPermissionsForRanks(ctx context.Context, us
 		return can, requireRanks, nil
 	}
 
-	effectiveRank := rs.getUserRankForPermission(ctx, userInfo.ID, userInfo.Rank)
 	powerMapping := rs.getUserPowerMapping(ctx, userID)
 	for idx, action := range actions {
 		if powerMapping[action] {
 			can[idx] = true
 			continue
 		}
-		meetRank, requireRank := rs.checkUserRank(ctx, userInfo.ID, effectiveRank, PermissionPrefix+action)
+		meetRank, requireRank := rs.checkUserRank(ctx, userInfo.ID, userInfo.Rank, PermissionPrefix+action)
 		can[idx] = meetRank
 		requireRanks[idx] = requireRank
 	}
@@ -223,8 +218,7 @@ func (rs *RankService) CheckVotePermission(ctx context.Context, userID, objectID
 	if powerMapping[action] {
 		return true, 0, nil
 	}
-	effectiveRank := rs.getUserRankForPermission(ctx, userInfo.ID, userInfo.Rank)
-	can, needRank = rs.checkUserRank(ctx, userInfo.ID, effectiveRank, PermissionPrefix+action)
+	can, needRank = rs.checkUserRank(ctx, userInfo.ID, userInfo.Rank, PermissionPrefix+action)
 	return can, needRank, nil
 }
 

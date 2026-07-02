@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/role"
 	"github.com/apache/answer/internal/service/siteinfo_common"
@@ -44,16 +45,39 @@ var ctxUUIDKey = "ctxUuidKey"
 type AuthUserMiddleware struct {
 	authService           *auth.AuthService
 	siteInfoCommonService siteinfo_common.SiteInfoCommonService
+	userRoleService       *role.UserRoleRelService
 }
 
 // NewAuthUserMiddleware new auth user middleware
 func NewAuthUserMiddleware(
 	authService *auth.AuthService,
-	siteInfoCommonService siteinfo_common.SiteInfoCommonService) *AuthUserMiddleware {
+	siteInfoCommonService siteinfo_common.SiteInfoCommonService,
+	userRoleService *role.UserRoleRelService) *AuthUserMiddleware {
 	return &AuthUserMiddleware{
 		authService:           authService,
 		siteInfoCommonService: siteInfoCommonService,
+		userRoleService:       userRoleService,
 	}
+}
+
+// resolveEffectiveRole recomputes the user's role for the request's sub-site.
+// The token cache holds the role as resolved at login time — under multisite
+// that value is baked against whatever site the login happened on, so a
+// per-site moderator would otherwise carry (or lack) authority on the wrong
+// boards. No-op when the request carries no site (vanilla build, site-less
+// paths). Fails closed: a role read error demotes to plain user rather than
+// trusting the login-time value.
+func (am *AuthUserMiddleware) resolveEffectiveRole(ctx *gin.Context, userInfo *entity.UserCacheInfo) {
+	if userInfo == nil || multisite.SiteIDFromContext(ctx) == "" {
+		return
+	}
+	roleID, err := am.userRoleService.GetUserRole(ctx, userInfo.UserID)
+	if err != nil {
+		log.Errorf("resolve site role for user %s: %v", userInfo.UserID, err)
+		userInfo.RoleID = role.RoleUserID
+		return
+	}
+	userInfo.RoleID = roleID
 }
 
 // Auth get token and auth user, set user info to context if user is already login
@@ -70,6 +94,7 @@ func (am *AuthUserMiddleware) Auth() gin.HandlerFunc {
 			return
 		}
 		if userInfo != nil {
+			am.resolveEffectiveRole(ctx, userInfo)
 			ctx.Set(ctxUUIDKey, userInfo)
 		}
 		ctx.Next()
@@ -131,6 +156,7 @@ func (am *AuthUserMiddleware) MustAuthWithoutAccountAvailable() gin.HandlerFunc 
 			ctx.Abort()
 			return
 		}
+		am.resolveEffectiveRole(ctx, userInfo)
 		ctx.Set(ctxUUIDKey, userInfo)
 		ctx.Next()
 	}
@@ -172,6 +198,7 @@ func (am *AuthUserMiddleware) MustAuthAndAccountAvailable() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+		am.resolveEffectiveRole(ctx, userInfo)
 		ctx.Set(ctxUUIDKey, userInfo)
 		ctx.Next()
 	}
