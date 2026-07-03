@@ -31,6 +31,8 @@ func SiteIDFromContext(_ context.Context) string { return "" }
 
 func WithoutSite(ctx context.Context) context.Context { return ctx }
 
+func WithSiteID(ctx context.Context, _ string) context.Context { return ctx }
+
 func TierSiteID(_ context.Context) string { return "" }
 
 func Scope(session *xorm.Session, _ context.Context) *xorm.Session { return session }

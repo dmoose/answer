@@ -50,6 +50,16 @@ func WithoutSite(ctx context.Context) context.Context {
 	return context.WithValue(ctx, constant.SiteIDContextKey, "")
 }
 
+// WithSiteID returns a child context carrying the given site ID. Used to
+// rebuild site scope on derived/background contexts (queue workers, per-site
+// cron passes) that would otherwise lose the request's site.
+func WithSiteID(ctx context.Context, siteID string) context.Context {
+	if siteID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, constant.SiteIDContextKey, siteID)
+}
+
 // TierSiteID returns the siteID for tier-model tables (config, site_info)
 // where the default site is the global row. Default-site context normalizes
 // to "" so admin saves go to the global default instead of creating a

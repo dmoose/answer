@@ -23,6 +23,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/apache/answer/internal/multisite"
 	"github.com/segmentfault/pacman/log"
 )
 
@@ -37,11 +38,19 @@ type Service[T any] interface {
 	Close()
 }
 
+// envelope carries the message plus the site scope of the enqueuing request,
+// so handlers run under the site the work originated on instead of an empty
+// context that silently de-scopes site-aware reads and writes.
+type envelope[T any] struct {
+	siteID string
+	msg    T
+}
+
 // Queue is a generic message queue service that processes messages asynchronously.
 // It is thread-safe and supports graceful shutdown.
 type Queue[T any] struct {
 	name    string
-	queue   chan T
+	queue   chan envelope[T]
 	handler func(ctx context.Context, msg T) error
 	mu      sync.RWMutex
 	closed  bool
@@ -52,7 +61,7 @@ type Queue[T any] struct {
 func New[T any](name string, bufferSize int) *Queue[T] {
 	q := &Queue[T]{
 		name:  name,
-		queue: make(chan T, bufferSize),
+		queue: make(chan envelope[T], bufferSize),
 	}
 	q.startWorker()
 	return q
@@ -70,7 +79,7 @@ func (q *Queue[T]) Send(ctx context.Context, msg T) {
 	}
 
 	select {
-	case q.queue <- msg:
+	case q.queue <- envelope[T]{siteID: multisite.SiteIDFromContext(ctx), msg: msg}:
 		log.Debugf("[%s] enqueued message: %+v", q.name, msg)
 	case <-ctx.Done():
 		log.Warnf("[%s] context cancelled while sending message", q.name)
@@ -105,26 +114,27 @@ func (q *Queue[T]) startWorker() {
 	q.wg.Add(1)
 	go func() {
 		defer q.wg.Done()
-		for msg := range q.queue {
-			q.processMessage(msg)
+		for e := range q.queue {
+			q.processMessage(e)
 		}
 	}()
 }
 
 // processMessage handles a single message with proper synchronization.
-func (q *Queue[T]) processMessage(msg T) {
+func (q *Queue[T]) processMessage(e envelope[T]) {
 	q.mu.RLock()
 	handler := q.handler
 	q.mu.RUnlock()
 
 	if handler == nil {
-		log.Warnf("[%s] no handler registered, dropping message: %+v", q.name, msg)
+		log.Warnf("[%s] no handler registered, dropping message: %+v", q.name, e.msg)
 		return
 	}
 
-	// Use background context for async processing
-	// TODO: Consider adding timeout or using a derived context
-	if err := handler(context.TODO(), msg); err != nil {
+	// Rebuild the enqueuing request's site scope so site-aware reads and
+	// writes in handlers keep their attribution.
+	ctx := multisite.WithSiteID(context.Background(), e.siteID)
+	if err := handler(ctx, e.msg); err != nil {
 		log.Errorf("[%s] handler error: %v", q.name, err)
 	}
 }

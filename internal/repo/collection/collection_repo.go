@@ -28,7 +28,6 @@ import (
 	"github.com/apache/answer/internal/base/pager"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
-	"github.com/apache/answer/internal/multisite"
 	collectioncommon "github.com/apache/answer/internal/service/collection_common"
 	"github.com/apache/answer/internal/service/unique"
 	"github.com/apache/answer/pkg/uid"
@@ -36,7 +35,10 @@ import (
 	"xorm.io/xorm"
 )
 
-// collectionRepo collection repository
+// collectionRepo collection repository.
+// Collections are identity-global: one bookmark list per person spanning all
+// sub-sites (items still link into their owning site), so reads and writes
+// are deliberately un-scoped.
 type collectionRepo struct {
 	data         *data.Data
 	uniqueIDRepo unique.UniqueIDRepo
@@ -63,14 +65,13 @@ func (cr *collectionRepo) AddCollection(ctx context.Context, collection *entity.
 			UserID:   collection.UserID,
 			ObjectID: collection.ObjectID,
 		}
-		exist, err := multisite.Scope(session, ctx).ForUpdate().Get(old)
+		exist, err := session.ForUpdate().Get(old)
 		if err != nil {
 			return nil, err
 		}
 		if exist {
 			return nil, nil
 		}
-		multisite.SetSiteID(ctx, collection)
 		_, err = session.Insert(collection)
 		if err != nil {
 			return nil, err
@@ -85,7 +86,7 @@ func (cr *collectionRepo) AddCollection(ctx context.Context, collection *entity.
 
 // RemoveCollection delete collection
 func (cr *collectionRepo) RemoveCollection(ctx context.Context, id string) (err error) {
-	_, err = cr.data.SiteDB(ctx).Where("id = ?", id).Delete(&entity.Collection{})
+	_, err = cr.data.DB.Context(ctx).Where("id = ?", id).Delete(&entity.Collection{})
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -94,14 +95,14 @@ func (cr *collectionRepo) RemoveCollection(ctx context.Context, id string) (err 
 
 // UpdateCollection update collection
 func (cr *collectionRepo) UpdateCollection(ctx context.Context, collection *entity.Collection, cols []string) (err error) {
-	_, err = cr.data.SiteDB(ctx).ID(collection.ID).Cols(cols...).Update(collection)
+	_, err = cr.data.DB.Context(ctx).ID(collection.ID).Cols(cols...).Update(collection)
 	return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 }
 
 // GetCollection get collection one
 func (cr *collectionRepo) GetCollection(ctx context.Context, id int) (collection *entity.Collection, exist bool, err error) {
 	collection = &entity.Collection{}
-	exist, err = cr.data.SiteDB(ctx).ID(id).Get(collection)
+	exist, err = cr.data.DB.Context(ctx).ID(id).Get(collection)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -111,7 +112,7 @@ func (cr *collectionRepo) GetCollection(ctx context.Context, id int) (collection
 // GetCollectionList get collection list all
 func (cr *collectionRepo) GetCollectionList(ctx context.Context, collection *entity.Collection) (collectionList []*entity.Collection, err error) {
 	collectionList = make([]*entity.Collection, 0)
-	err = cr.data.SiteDB(ctx).Find(&collectionList, collection)
+	err = cr.data.DB.Context(ctx).Find(&collectionList, collection)
 	err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	return
 }
@@ -119,7 +120,7 @@ func (cr *collectionRepo) GetCollectionList(ctx context.Context, collection *ent
 // GetOneByObjectIDAndUser get one by object TagID and user
 func (cr *collectionRepo) GetOneByObjectIDAndUser(ctx context.Context, userID string, objectID string) (collection *entity.Collection, exist bool, err error) {
 	collection = &entity.Collection{}
-	exist, err = cr.data.SiteDB(ctx).Where("user_id = ? and object_id = ?", userID, objectID).Get(collection)
+	exist, err = cr.data.DB.Context(ctx).Where("user_id = ? and object_id = ?", userID, objectID).Get(collection)
 	if err != nil {
 		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -129,7 +130,7 @@ func (cr *collectionRepo) GetOneByObjectIDAndUser(ctx context.Context, userID st
 // SearchByObjectIDsAndUser search by object IDs and user
 func (cr *collectionRepo) SearchByObjectIDsAndUser(ctx context.Context, userID string, objectIDs []string) ([]*entity.Collection, error) {
 	collectionList := make([]*entity.Collection, 0)
-	err := cr.data.SiteDB(ctx).Where("user_id = ?", userID).In("object_id", objectIDs).Find(&collectionList)
+	err := cr.data.DB.Context(ctx).Where("user_id = ?", userID).In("object_id", objectIDs).Find(&collectionList)
 	if err != nil {
 		return collectionList, err
 	}
@@ -139,7 +140,7 @@ func (cr *collectionRepo) SearchByObjectIDsAndUser(ctx context.Context, userID s
 // CountByObjectID count by object TagID
 func (cr *collectionRepo) CountByObjectID(ctx context.Context, objectID string) (total int64, err error) {
 	collection := &entity.Collection{}
-	total, err = cr.data.SiteDB(ctx).Where("object_id = ?", objectID).Count(collection)
+	total, err = cr.data.DB.Context(ctx).Where("object_id = ?", objectID).Count(collection)
 	if err != nil {
 		return 0, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -150,7 +151,7 @@ func (cr *collectionRepo) CountByObjectID(ctx context.Context, objectID string) 
 func (cr *collectionRepo) GetCollectionPage(ctx context.Context, page, pageSize int, collection *entity.Collection) (collectionList []*entity.Collection, total int64, err error) {
 	collectionList = make([]*entity.Collection, 0)
 
-	session := cr.data.SiteDB(ctx)
+	session := cr.data.DB.Context(ctx)
 	if collection.UserID != "" && collection.UserID != "0" {
 		session = session.Where("user_id = ?", collection.UserID)
 	}
@@ -203,7 +204,7 @@ func (cr *collectionRepo) SearchList(ctx context.Context, search *entity.Collect
 		search.PageSize = constant.DefaultPageSize
 	}
 	offset := search.Page * search.PageSize
-	session := cr.data.SiteDB(ctx).Where("")
+	session := cr.data.DB.Context(ctx).Where("")
 	if len(search.UserID) > 0 {
 		session = session.And("user_id = ?", search.UserID)
 	} else {
