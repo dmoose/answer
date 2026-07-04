@@ -22,6 +22,7 @@
 package middleware
 
 import (
+	"net/http"
 	"strings"
 	"sync"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/ui"
 	"github.com/gin-gonic/gin"
 	"github.com/segmentfault/pacman/errors"
 	"github.com/segmentfault/pacman/log"
@@ -37,9 +39,18 @@ import (
 
 type SiteMiddleware struct {
 	db       *xorm.Engine
+	basePath string // uiConf.APIBaseURL — routes register under it
 	mu       sync.RWMutex
 	cache    map[string]string // slug → site_id
 	fallback string            // lowest-ID active site, used when default is gone
+}
+
+// SetBasePath records the deployment's API base URL so the resolution
+// skip-list matches the paths routes actually register under. Without this,
+// a non-empty api_url would put the admin API through site resolution and
+// break its recovery role.
+func (sm *SiteMiddleware) SetBasePath(basePath string) {
+	sm.basePath = strings.TrimRight(basePath, "/")
 }
 
 func NewSiteMiddleware(db *xorm.Engine) *SiteMiddleware {
@@ -97,7 +108,7 @@ func (sm *SiteMiddleware) fallbackSiteID() string {
 // site's content from the wrong domain.
 func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		path := ctx.Request.URL.Path
+		path := strings.TrimPrefix(ctx.Request.URL.Path, sm.basePath)
 		if path == "/healthz" ||
 			strings.HasPrefix(path, "/static/") ||
 			strings.HasPrefix(path, "/install/") ||
@@ -111,7 +122,9 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 
 		var siteID string
 
-		// 1. Subdomain
+		// 1. Subdomain — a heuristic: the first host label is often the
+		// deployment host ("answer.example.com"), not a site slug, so a
+		// miss here falls through silently rather than 404ing.
 		host := ctx.Request.Host
 		if idx := strings.LastIndex(host, ":"); idx > 0 {
 			host = host[:idx]
@@ -121,26 +134,39 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			siteID = sm.resolve(parts[0])
 		}
 
-		// 2. Path prefix
-		if siteID == "" && strings.HasPrefix(path, "/s/") {
+		// 2. Path prefix — explicit: /s/<slug> names a site, so an unknown
+		// slug is a real not-found, never a silent default-site render
+		// under the wrong URL.
+		if strings.HasPrefix(path, "/s/") {
 			rest := path[3:]
 			slug := rest
 			if idx := strings.Index(rest, "/"); idx > 0 {
 				slug = rest[:idx]
 			}
-			siteID = sm.resolve(slug)
-		}
-
-		// 3. X-Site-Slug header (SPA bootstrap)
-		if siteID == "" {
-			if h := ctx.GetHeader("X-Site-Slug"); h != "" {
-				siteID = sm.resolve(h)
+			if resolved := sm.resolve(slug); resolved != "" {
+				siteID = resolved
+			} else {
+				siteNotFound(ctx, path)
+				return
 			}
 		}
 
-		// 4. Default fallback — try the "default" slug first, then any
-		// active site. Belt-and-suspenders so the network keeps serving
-		// even if the default site gets deactivated by accident.
+		// 3. X-Site-Slug header (SPA bootstrap) — explicit like the path.
+		if siteID == "" {
+			if h := ctx.GetHeader("X-Site-Slug"); h != "" {
+				if resolved := sm.resolve(h); resolved != "" {
+					siteID = resolved
+				} else {
+					siteNotFound(ctx, path)
+					return
+				}
+			}
+		}
+
+		// 4. Default fallback — only when NO explicit site was specified.
+		// Try the "default" slug first, then any active site.
+		// Belt-and-suspenders so the network keeps serving even if the
+		// default site gets deactivated by accident.
 		if siteID == "" {
 			siteID = sm.resolve("default")
 		}
@@ -156,6 +182,25 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 		ctx.Set(constant.SiteIDFlag, siteID)
 		ctx.Next()
 	}
+}
+
+// siteNotFound rejects an explicitly named but unknown site: JSON for API
+// calls, the SPA shell with a 404 status for browser navigations (so the
+// frontend renders its not-found page instead of raw JSON).
+func siteNotFound(ctx *gin.Context, path string) {
+	if strings.HasPrefix(path, "/answer/") {
+		handler.HandleResponse(ctx, errors.NotFound(reason.SiteNotFound), nil)
+		ctx.Abort()
+		return
+	}
+	ctx.Header("content-type", "text/html;charset=utf-8")
+	ctx.Header("X-Frame-Options", "DENY")
+	if file, err := ui.Build.ReadFile("build/index.html"); err == nil {
+		ctx.Data(http.StatusNotFound, "text/html;charset=utf-8", file)
+	} else {
+		ctx.Status(http.StatusNotFound)
+	}
+	ctx.Abort()
 }
 
 func (sm *SiteMiddleware) RefreshSiteCache() {

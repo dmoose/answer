@@ -93,11 +93,11 @@ func (ss *SearchService) searchByPlugin(ctx context.Context, finder plugin.Searc
 	resp = &schema.SearchResp{}
 	switch {
 	case cond.SearchAll():
-		res, resp.Total, err = finder.SearchContents(ctx, cond.Convert2PluginSearchCond(dto.Page, dto.Size, dto.Order))
+		res, resp.Total, err = finder.SearchContents(ctx, cond.Convert2PluginSearchCond(ctx, dto.Page, dto.Size, dto.Order))
 	case cond.SearchQuestion():
-		res, resp.Total, err = finder.SearchQuestions(ctx, cond.Convert2PluginSearchCond(dto.Page, dto.Size, dto.Order))
+		res, resp.Total, err = finder.SearchQuestions(ctx, cond.Convert2PluginSearchCond(ctx, dto.Page, dto.Size, dto.Order))
 	case cond.SearchAnswer():
-		res, resp.Total, err = finder.SearchAnswers(ctx, cond.Convert2PluginSearchCond(dto.Page, dto.Size, dto.Order))
+		res, resp.Total, err = finder.SearchAnswers(ctx, cond.Convert2PluginSearchCond(ctx, dto.Page, dto.Size, dto.Order))
 	}
 	if err != nil {
 		return resp, err

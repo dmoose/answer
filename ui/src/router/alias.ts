@@ -20,6 +20,27 @@
 export const REACT_BASE_PATH = process.env.REACT_APP_BASE_URL || '';
 export const BASE_ORIGIN = `${window.location.origin}${REACT_BASE_PATH}`;
 
+/**
+ * The base path the app is actually running under at runtime: the build-time
+ * base plus the multisite prefix (/s/<slug>) when present. REACT_BASE_PATH is
+ * baked at build time, so hard navigations built from it alone would drop the
+ * site prefix and land on the default site. The site prefix cannot change
+ * within a page's lifetime, so deriving it from location on each call is safe.
+ */
+export const getRuntimeBasePath = (): string => {
+  const match = window.location.pathname
+    .replace(REACT_BASE_PATH, '')
+    .match(/^\/s\/[^/]+/);
+  return `${REACT_BASE_PATH}${match ? match[0] : ''}`;
+};
+
+/**
+ * Origin + runtime base path — for building absolute URLs (share links,
+ * logout redirects) that must stay on the current sub-site.
+ */
+export const getRuntimeBaseOrigin = (): string =>
+  `${window.location.origin}${getRuntimeBasePath()}`;
+
 export const RouteAlias = {
   home: '/',
   login: '/users/login',

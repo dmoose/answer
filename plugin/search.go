@@ -77,6 +77,11 @@ type SearchBasicCond struct {
 	ViewAmount int
 	// greater than or equal to the number of answers. Only support search question.
 	AnswerAmount int
+
+	// SiteID scopes the search to one site in multi-site deployments.
+	// Empty means search across all sites. Plugins MUST apply this filter
+	// at the index level so result totals and pagination are correct.
+	SiteID string
 }
 
 type SearchAcceptedCond int

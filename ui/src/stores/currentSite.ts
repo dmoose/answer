@@ -34,7 +34,7 @@ interface CurrentSiteState {
   setSites: (sites: Site[]) => void;
 }
 
-function siteSlugFromURL(): string {
+export function siteSlugFromURL(): string {
   const path = window.location.pathname;
   const match = path.match(/^\/s\/([^/]+)/);
   return match ? match[1] : '';
@@ -56,7 +56,10 @@ function resolveCurrentSite(sites: Site[]): Site | null {
   const slug = siteSlugFromURL();
   if (slug) {
     const match = sites.find((s) => s.slug === slug);
-    if (match) return match;
+    // An explicit /s/<slug> that names no known site is a real not-found:
+    // mirroring the backend, never silently render the default site under
+    // the wrong URL.
+    return match || null;
   }
 
   const hostMatch = siteFromHostname(sites);

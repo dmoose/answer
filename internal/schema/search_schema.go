@@ -20,11 +20,13 @@
 package schema
 
 import (
+	"context"
 	"regexp"
 	"strings"
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/validator"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/plugin"
 )
 
@@ -108,9 +110,12 @@ func (s *SearchCondition) SearchAnswer() bool {
 	return s.TargetType == constant.AnswerObjectType
 }
 
-// Convert2PluginSearchCond convert to plugin search condition
-func (s *SearchCondition) Convert2PluginSearchCond(page, pageSize int, order string) *plugin.SearchBasicCond {
+// Convert2PluginSearchCond convert to plugin search condition. The site is
+// read from ctx so the plugin scopes at source (results, totals, pagination);
+// scope=network clears it upstream for the deliberate all-sites case.
+func (s *SearchCondition) Convert2PluginSearchCond(ctx context.Context, page, pageSize int, order string) *plugin.SearchBasicCond {
 	basic := &plugin.SearchBasicCond{
+		SiteID:       multisite.SiteIDFromContext(ctx),
 		Page:         page,
 		PageSize:     pageSize,
 		Words:        s.Words,

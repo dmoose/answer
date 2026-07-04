@@ -59,6 +59,12 @@ const Index: FC<Props> = ({ data }) => {
       answerId: data.object.id,
     });
   }
+  // Cross-site results must leave the current router basename: build a full
+  // URL on the owning site so the link doesn't resolve inside this site's
+  // /s/<slug> prefix and 404.
+  if (resultSite) {
+    itemUrl = `${window.location.origin}/s/${resultSite.slug}${itemUrl}`;
+  }
 
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q');
@@ -83,7 +89,10 @@ const Index: FC<Props> = ({ data }) => {
             {resultSite.name}
           </span>
         )}
-        <Link className="h5 mb-0 link-dark text-break" to={itemUrl}>
+        <Link
+          className="h5 mb-0 link-dark text-break"
+          to={itemUrl}
+          reloadDocument={!!resultSite}>
           <HighlightText text={data.object.title} keywords={keywords} />
           {data.object.status === 'closed'
             ? ` [${t('closed', { keyPrefix: 'question' })}]`

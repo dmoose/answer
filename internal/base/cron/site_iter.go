@@ -1,4 +1,4 @@
-//go:build !multisite
+//go:build multisite
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,23 +19,25 @@
  * under the License.
  */
 
-package middleware
+package cron
 
 import (
-	"github.com/gin-gonic/gin"
-	"xorm.io/xorm"
+	"context"
+
+	"github.com/apache/answer/internal/multisite"
+	"github.com/segmentfault/pacman/log"
 )
 
-type SiteMiddleware struct{}
-
-func NewSiteMiddleware(_ *xorm.Engine) *SiteMiddleware {
-	return &SiteMiddleware{}
+// forEachSite runs fn once per active sub-site, each under a context carrying
+// that site, so site-scoped cron work (sitemap generation) is partitioned per
+// site instead of running site-less across all of them.
+func (s *ScheduledTaskManager) forEachSite(ctx context.Context, fn func(ctx context.Context)) {
+	sites, err := s.siteService.GetAllSites(ctx)
+	if err != nil {
+		log.Errorf("cron: list sites: %v", err)
+		return
+	}
+	for _, site := range sites {
+		fn(multisite.WithSiteID(ctx, site.ID))
+	}
 }
-
-func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
-	return func(ctx *gin.Context) { ctx.Next() }
-}
-
-func (sm *SiteMiddleware) RefreshSiteCache() {}
-
-func (sm *SiteMiddleware) SetBasePath(_ string) {}

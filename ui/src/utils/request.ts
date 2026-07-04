@@ -27,7 +27,7 @@ import type {
 
 import { Modal } from '@/components';
 import { loggedUserInfoStore, toastStore, errorCodeStore } from '@/stores';
-import currentSiteStore from '@/stores/currentSite';
+import currentSiteStore, { siteSlugFromURL } from '@/stores/currentSite';
 import { LOGGED_TOKEN_STORAGE_KEY } from '@/common/constants';
 import { RouteAlias } from '@/router/alias';
 import { getCurrentLang } from '@/utils/localize';
@@ -68,9 +68,13 @@ class Request {
         // go to /answer/api/v1/... directly, never carrying the SPA basename,
         // so the server saw no slug and fell back to the default site. The
         // server still validates the slug against the known-sites cache.
+        // During bootstrap the site store is still empty, so fall back to
+        // the /s/<slug> prefix in the URL — otherwise the first requests
+        // (app settings, user info) load the default site's data.
         const { currentSite } = currentSiteStore.getState();
-        if (currentSite?.slug) {
-          requestConfig.headers.set('X-Site-Slug', currentSite.slug);
+        const slug = currentSite?.slug || siteSlugFromURL();
+        if (slug) {
+          requestConfig.headers.set('X-Site-Slug', slug);
         }
         return requestConfig;
       },

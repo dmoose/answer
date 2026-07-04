@@ -26,6 +26,7 @@ import (
 	"github.com/apache/answer/internal/service/content"
 	"github.com/apache/answer/internal/service/file_record"
 	"github.com/apache/answer/internal/service/service_config"
+	"github.com/apache/answer/internal/service/site"
 	"github.com/apache/answer/internal/service/siteinfo_common"
 	"github.com/apache/answer/internal/service/user_admin"
 	"github.com/robfig/cron/v3"
@@ -39,6 +40,7 @@ type ScheduledTaskManager struct {
 	fileRecordService *file_record.FileRecordService
 	userAdminService  *user_admin.UserAdminService
 	serviceConfig     *service_config.ServiceConfig
+	siteService       *site.SiteService
 }
 
 // NewScheduledTaskManager new scheduled task manager
@@ -48,6 +50,7 @@ func NewScheduledTaskManager(
 	fileRecordService *file_record.FileRecordService,
 	userAdminService *user_admin.UserAdminService,
 	serviceConfig *service_config.ServiceConfig,
+	siteService *site.SiteService,
 ) *ScheduledTaskManager {
 	manager := &ScheduledTaskManager{
 		siteInfoService:   siteInfoService,
@@ -55,6 +58,7 @@ func NewScheduledTaskManager(
 		fileRecordService: fileRecordService,
 		userAdminService:  userAdminService,
 		serviceConfig:     serviceConfig,
+		siteService:       siteService,
 	}
 	return manager
 }
@@ -62,12 +66,11 @@ func NewScheduledTaskManager(
 func (s *ScheduledTaskManager) Run() {
 	log.Infof("cron job manager start")
 
-	s.questionService.SitemapCron(context.Background())
+	s.forEachSite(context.Background(), s.questionService.SitemapCron)
 	c := cron.New()
 	_, err := c.AddFunc("0 */1 * * *", func() {
-		ctx := context.Background()
 		log.Infof("sitemap cron execution")
-		s.questionService.SitemapCron(ctx)
+		s.forEachSite(context.Background(), s.questionService.SitemapCron)
 	})
 	if err != nil {
 		log.Error(err)

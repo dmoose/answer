@@ -42,7 +42,7 @@ const (
 	ConfigCacheTime                            = 1 * time.Hour
 	ConnectorUserExternalInfoCacheKey          = "answer:connector:"
 	ConnectorUserExternalInfoCacheTime         = 10 * time.Minute
-	SiteMapQuestionCacheKeyPrefix              = "answer:sitemap:question:%d"
+	SiteMapQuestionCacheKeyPrefix              = "answer:sitemap:question:%s:%d"
 	SiteMapQuestionCacheTime                   = time.Hour
 	SitemapMaxSize                             = 50000
 	NewQuestionNotificationLimitCacheKeyPrefix = "answer:new-question-notification-limit:"

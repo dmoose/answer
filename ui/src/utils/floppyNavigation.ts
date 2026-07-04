@@ -19,30 +19,34 @@
 
 import type { NavigateFunction } from 'react-router-dom';
 
-import { RouteAlias, REACT_BASE_PATH } from '@/router/alias';
+import { RouteAlias, getRuntimeBasePath } from '@/router/alias';
 import Storage from '@/utils/storage';
 import { REDIRECT_PATH_STORAGE_KEY } from '@/common/constants';
 import { getLoginUrl } from '@/utils/userCenter';
 
 const equalToCurrentHref = (target: string, base?: string) => {
   base ||= window.location.origin;
+  const basePath = getRuntimeBasePath();
   const targetUrl = new URL(
-    target.startsWith(REACT_BASE_PATH) ? target : `${REACT_BASE_PATH}${target}`,
+    basePath && target.startsWith(basePath) ? target : `${basePath}${target}`,
     base,
   );
   return targetUrl.toString() === window.location.href;
 };
 const matchToCurrentHref = (target: string) => {
   target = (target || '').trim();
-  const hasBasePath = target.startsWith(REACT_BASE_PATH);
+  const basePath = getRuntimeBasePath();
+  const hasBasePath = !!basePath && target.startsWith(basePath);
   // Empty string or `/` can match any path
   if (!target || target === '/') {
     return true;
   }
   const { pathname, search, hash } = window.location;
   let pathWithOutBase = pathname;
-  if (!hasBasePath) {
-    pathWithOutBase = pathWithOutBase.replace(REACT_BASE_PATH, '');
+  if (!hasBasePath && basePath) {
+    // Strip the runtime base (build-time base + /s/<slug> site prefix) so
+    // router-relative targets compare against router-relative segments.
+    pathWithOutBase = pathWithOutBase.replace(basePath, '');
   }
 
   const tPart = target.split('?');
@@ -81,11 +85,12 @@ const matchToCurrentHref = (target: string) => {
 };
 
 const storageLoginRedirect = () => {
+  const basePath = getRuntimeBasePath();
   const { pathname } = window.location;
-  const filterPath = pathname.replace(REACT_BASE_PATH, '');
+  const filterPath = basePath ? pathname.replace(basePath, '') : pathname;
   if (filterPath !== RouteAlias.login && filterPath !== RouteAlias.signUp) {
     const loc = window.location;
-    const redirectUrl = loc.href.replace(`${loc.origin}${REACT_BASE_PATH}`, '');
+    const redirectUrl = loc.href.replace(`${loc.origin}${basePath}`, '');
     Storage.set(REDIRECT_PATH_STORAGE_KEY, redirectUrl);
   }
 };
@@ -142,31 +147,35 @@ const navigate = (to: string | number, config: NavigateConfig = {}) => {
     if (handler === 'href' && config.options?.replace) {
       handler = 'replace';
     }
+    // Hard navigations bypass the router, so they must carry the full
+    // runtime base (build-time base + /s/<slug> site prefix); the router
+    // handler applies the basename itself, so it gets a stripped path.
+    const basePath = getRuntimeBasePath();
     if (handler === 'href') {
       if (
         to.startsWith('/') &&
         !to.startsWith('//') &&
-        !to.startsWith(REACT_BASE_PATH)
+        !(basePath && to.startsWith(basePath))
       ) {
-        to = `${REACT_BASE_PATH}${to}`;
+        to = `${basePath}${to}`;
       }
       window.location.href = to;
     } else if (handler === 'replace') {
       if (
         to.startsWith('/') &&
         !to.startsWith('//') &&
-        !to.startsWith(REACT_BASE_PATH)
+        !(basePath && to.startsWith(basePath))
       ) {
-        to = `${REACT_BASE_PATH}${to}`;
+        to = `${basePath}${to}`;
       }
       window.location.replace(to);
     } else if (typeof handler === 'function') {
-      if (to === REACT_BASE_PATH) {
+      if (basePath && to === basePath) {
         to = '/';
       }
 
-      if (to !== REACT_BASE_PATH && to.startsWith(REACT_BASE_PATH)) {
-        to = to.replace(REACT_BASE_PATH, '');
+      if (basePath && to !== basePath && to.startsWith(basePath)) {
+        to = to.replace(basePath, '');
       }
       handler(to, config.options);
     }

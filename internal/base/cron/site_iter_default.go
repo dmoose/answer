@@ -19,23 +19,11 @@
  * under the License.
  */
 
-package middleware
+package cron
 
-import (
-	"github.com/gin-gonic/gin"
-	"xorm.io/xorm"
-)
+import "context"
 
-type SiteMiddleware struct{}
-
-func NewSiteMiddleware(_ *xorm.Engine) *SiteMiddleware {
-	return &SiteMiddleware{}
+// forEachSite has nothing to iterate on a single-site build.
+func (s *ScheduledTaskManager) forEachSite(ctx context.Context, fn func(ctx context.Context)) {
+	fn(ctx)
 }
-
-func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
-	return func(ctx *gin.Context) { ctx.Next() }
-}
-
-func (sm *SiteMiddleware) RefreshSiteCache() {}
-
-func (sm *SiteMiddleware) SetBasePath(_ string) {}

@@ -91,6 +91,7 @@ const (
 	InstallCreateTableFailed         = "error.database.create_table_failed"
 	InstallConfigFailed              = "error.install.create_config_failed"
 	SiteInfoConfigNotFound           = "error.site_info.config_not_found"
+	SiteNotFound                     = "error.site.not_found"
 	UploadFileSourceUnsupported      = "error.upload.source_unsupported"
 	UploadFileUnsupportedFileFormat  = "error.upload.unsupported_file_format"
 	RecommendTagNotExist             = "error.tag.recommend_tag_not_found"

@@ -490,16 +490,26 @@ func (sr *searchRepo) ParseSearchPluginResult(ctx context.Context, sres []plugin
 		res  = make([]map[string][]byte, 0)
 		b    *builder.Builder
 	)
+	// The site filter must live INSIDE the builder: xorm ignores session-level
+	// Where() conditions when Query() is handed a raw builder, so SiteDB's
+	// scoping never reaches the SQL on this path.
+	siteID := multisite.SiteIDFromContext(ctx)
 	for _, r := range sres {
 		switch r.Type {
 		case "question":
 			b = builder.MySQL().Select(qFields...).From("question").Where(builder.Eq{"id": r.ID}).
 				And(builder.Lt{"`status`": entity.QuestionStatusDeleted})
+			if siteID != "" {
+				b.And(builder.Eq{"`question`.`site_id`": siteID})
+			}
 		case "answer":
 			b = builder.MySQL().Select(aFields...).From("answer").LeftJoin("`question`", "`question`.`id` = `answer`.`question_id`").
 				Where(builder.Eq{"`answer`.`id`": r.ID}).
 				And(builder.Lt{"`question`.`status`": entity.QuestionStatusDeleted}).
 				And(builder.Lt{"`answer`.`status`": entity.AnswerStatusDeleted}).And(builder.Eq{"`question`.`show`": entity.QuestionShow})
+			if siteID != "" {
+				b.And(builder.Eq{"`answer`.`site_id`": siteID})
+			}
 		}
 		qres, err = sr.data.SiteDB(ctx).Query(b)
 		if err != nil || len(qres) == 0 {

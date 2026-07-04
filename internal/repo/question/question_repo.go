@@ -348,8 +348,10 @@ func (qr *questionRepo) SitemapQuestions(ctx context.Context, page, pageSize int
 	page--
 	questionIDList = make([]*schema.SiteMapQuestionInfo, 0)
 
-	// try to get sitemap data from cache
-	cacheKey := fmt.Sprintf(constant.SiteMapQuestionCacheKeyPrefix, page)
+	// try to get sitemap data from cache; the key carries the site so one
+	// site's sitemap pages can never serve another's (or a global cron
+	// pass's) question list
+	cacheKey := fmt.Sprintf(constant.SiteMapQuestionCacheKeyPrefix, multisite.SiteIDFromContext(ctx), page)
 	cacheData, exist, err := qr.data.Cache.GetString(ctx, cacheKey)
 	if err == nil && exist {
 		_ = json.Unmarshal([]byte(cacheData), &questionIDList)

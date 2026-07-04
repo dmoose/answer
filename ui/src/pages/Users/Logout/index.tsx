@@ -25,7 +25,7 @@ import { usePageTags } from '@/hooks';
 import { logout } from '@/services';
 import { loggedUserInfoStore } from '@/stores';
 import Storage from '@/utils/storage';
-import { RouteAlias, BASE_ORIGIN } from '@/router/alias';
+import { RouteAlias, getRuntimeBaseOrigin } from '@/router/alias';
 import { REDIRECT_PATH_STORAGE_KEY } from '@/common/constants';
 
 const Index = () => {
@@ -43,7 +43,7 @@ const Index = () => {
         const redirect =
           Storage.get(REDIRECT_PATH_STORAGE_KEY) || RouteAlias.home;
         Storage.remove(REDIRECT_PATH_STORAGE_KEY);
-        window.location.replace(`${BASE_ORIGIN}${redirect}`);
+        window.location.replace(`${getRuntimeBaseOrigin()}${redirect}`);
       });
     }
     // auto height of container
