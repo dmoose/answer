@@ -110,6 +110,7 @@ var migrations = []Migration{
 	NewMigration("v2.0.1", "change avatar type to text", updateAvatarType, false),
 	NewMigration("v2.1.0", "add multi-site support", addMultiSiteSupport, true),
 	NewMigration("v2.2.0", "add network directory (profile, projects, tags)", addNetworkDirectory, false),
+	NewMigration("v2.2.1", "repair multisite schema (composite uniques, role backfill, retire user_site_rank)", repairMultisiteSchema, false),
 }
 
 func GetMigrations() []Migration {

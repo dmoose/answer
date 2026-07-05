@@ -80,7 +80,6 @@ var (
 		&entity.AIConversation{},
 		&entity.AIConversationRecord{},
 		&entity.Site{},
-		&entity.UserSiteRank{},
 		&entity.UserSiteRoleRel{},
 		&entity.NetworkProfile{},
 		&entity.NetworkProject{},

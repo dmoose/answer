@@ -22,92 +22,190 @@ package migrations
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/entity"
-	"github.com/segmentfault/pacman/log"
 	"xorm.io/xorm"
 	"xorm.io/xorm/schemas"
 )
 
+// siteScopedTables are the content tables that carry a site_id column,
+// paired with their entities so a missing table can be created via Sync
+// (dialect-correct) while an existing table only gets additive, explicit
+// DDL — xorm 1.3.2's Sync emits MySQL-syntax MODIFY COLUMN on any perceived
+// column drift, which is a hard error on SQLite/Postgres, so Sync must never
+// run against a table that already exists.
+type siteScopedTable struct {
+	name string
+	bean any
+}
+
+func siteScopedTables() []siteScopedTable {
+	return []siteScopedTable{
+		{"question", new(entity.Question)}, {"answer", new(entity.Answer)},
+		{"comment", new(entity.Comment)},
+		{"tag", new(entity.Tag)}, {"tag_rel", new(entity.TagRel)},
+		{"revision", new(entity.Revision)}, {"activity", new(entity.Activity)},
+		{"report", new(entity.Report)}, {"meta", new(entity.Meta)},
+		{"review", new(entity.Review)},
+		{"notification", new(entity.Notification)},
+		{"collection", new(entity.Collection)}, {"collection_group", new(entity.CollectionGroup)},
+		{"config", new(entity.Config)}, {"site_info", new(entity.SiteInfo)},
+		{"badge_award", new(entity.BadgeAward)}, {"file_record", new(entity.FileRecord)},
+		{"plugin_config", new(entity.PluginConfig)}, {"plugin_kv_storage", new(entity.PluginKVStorage)},
+		{"question_link", new(entity.QuestionLink)},
+	}
+}
+
+// compositeUniques replace the legacy single-column unique indexes with
+// per-site ones. Index names match what xorm Sync creates on a fresh install
+// (UQE_<table>_<group>) so fresh and upgraded schemas converge.
+var compositeUniques = []struct {
+	table, index string
+	cols         []string
+}{
+	{"tag", "UQE_tag_uq_tag_slug_site", []string{"slug_name", "site_id"}},
+	{"config", "UQE_config_uq_config_key_site", []string{"key", "site_id"}},
+	{"plugin_config", "UQE_plugin_config_uq_plugin_cfg_site", []string{"plugin_slug_name", "site_id"}},
+}
+
+// ensureSiteScopedSchema brings every site-scoped table to the multisite
+// shape: site_id column, its index, and the composite unique indexes.
+// Idempotent — every step checks before it changes.
+func ensureSiteScopedSchema(ctx context.Context, x *xorm.Engine) error {
+	quote := func(name string) string {
+		return x.Dialect().Quoter().Quote(name)
+	}
+	for _, tbl := range siteScopedTables() {
+		exists, err := x.Context(ctx).IsTableExist(tbl.name)
+		if err != nil {
+			return fmt.Errorf("check table %s: %w", tbl.name, err)
+		}
+		if !exists {
+			// Sync is safe (and dialect-correct) only for table creation.
+			if err := x.Context(ctx).Sync(tbl.bean); err != nil {
+				return fmt.Errorf("create table %s: %w", tbl.name, err)
+			}
+			continue
+		}
+		hasCol, err := columnExists(ctx, x, tbl.name, "site_id")
+		if err != nil {
+			return fmt.Errorf("check site_id on %s: %w", tbl.name, err)
+		}
+		if !hasCol {
+			_, err = x.Context(ctx).Exec(fmt.Sprintf(
+				"ALTER TABLE %s ADD COLUMN %s VARCHAR(36) NOT NULL DEFAULT ''",
+				quote(tbl.name), quote("site_id")))
+			if err != nil {
+				return fmt.Errorf("add site_id to %s: %w", tbl.name, err)
+			}
+		}
+		idxName := "IDX_" + tbl.name + "_site_id"
+		hasIdx, err := indexExists(ctx, x, tbl.name, idxName)
+		if err != nil {
+			return fmt.Errorf("check index %s: %w", idxName, err)
+		}
+		if !hasIdx {
+			_, err = x.Context(ctx).Exec(fmt.Sprintf(
+				"CREATE INDEX %s ON %s (%s)",
+				quote(idxName), quote(tbl.name), quote("site_id")))
+			if err != nil {
+				return fmt.Errorf("create index %s: %w", idxName, err)
+			}
+		}
+	}
+
+	for _, cu := range compositeUniques {
+		hasIdx, err := indexExists(ctx, x, cu.table, cu.index)
+		if err != nil {
+			return fmt.Errorf("check index %s: %w", cu.index, err)
+		}
+		if hasIdx {
+			continue
+		}
+		cols := make([]string, len(cu.cols))
+		for i, c := range cu.cols {
+			cols[i] = quote(c)
+		}
+		_, err = x.Context(ctx).Exec(fmt.Sprintf(
+			"CREATE UNIQUE INDEX %s ON %s (%s)",
+			quote(cu.index), quote(cu.table), strings.Join(cols, ",")))
+		if err != nil {
+			return fmt.Errorf("create unique index %s: %w", cu.index, err)
+		}
+	}
+	return nil
+}
+
+// columnExists reports whether a column is present, per dialect.
+func columnExists(ctx context.Context, x *xorm.Engine, table, column string) (bool, error) {
+	var n int64
+	switch x.Dialect().URI().DBType {
+	case schemas.MYSQL:
+		_, err := x.Context(ctx).SQL(
+			`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+			table, column).Get(&n)
+		return n > 0, err
+	case schemas.POSTGRES:
+		_, err := x.Context(ctx).SQL(
+			`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`,
+			table, column).Get(&n)
+		return n > 0, err
+	case schemas.SQLITE:
+		_, err := x.Context(ctx).SQL(
+			`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`,
+			table, column).Get(&n)
+		return n > 0, err
+	}
+	return false, fmt.Errorf("unsupported dialect")
+}
+
+// backfillTables are the site-scoped tables whose existing rows belong to the
+// default site after the upgrade. config and site_info stay site_id=” — the
+// empty value is the global-default row the per-site cascade falls back to.
+var backfillTables = []string{
+	"question", "answer", "comment", "tag", "tag_rel",
+	"revision", "activity", "report", "meta", "review",
+	"notification", "collection", "collection_group",
+	"badge_award", "file_record",
+	"plugin_kv_storage", "question_link", "plugin_config",
+}
+
 func addMultiSiteSupport(ctx context.Context, x *xorm.Engine) error {
 	if err := x.Context(ctx).Sync(
 		new(entity.Site),
-		new(entity.UserSiteRank),
 		new(entity.UserSiteRoleRel),
 	); err != nil {
 		return fmt.Errorf("create multi-site tables: %w", err)
 	}
 
-	type siteIDColumn struct {
-		table string
-	}
-	tables := []siteIDColumn{
-		{"question"}, {"answer"}, {"comment"},
-		{"tag"}, {"tag_rel"},
-		{"revision"}, {"activity"}, {"report"}, {"meta"}, {"review"},
-		{"notification"}, {"collection"}, {"collection_group"},
-		{"config"}, {"site_info"},
-		{"badge_award"}, {"file_record"},
-		{"plugin_config"}, {"plugin_kv_storage"},
-		{"question_link"},
+	// site_id columns, their indexes, and the composite unique indexes. At
+	// this point the legacy single-column uniques still guarantee the
+	// composites hold.
+	if err := ensureSiteScopedSchema(ctx, x); err != nil {
+		return err
 	}
 
-	for _, t := range tables {
+	if err := ensureDefaultSite(ctx, x); err != nil {
+		return err
+	}
+
+	for _, table := range backfillTables {
 		_, err := x.Context(ctx).Exec(
-			fmt.Sprintf("ALTER TABLE `%s` ADD COLUMN `site_id` VARCHAR(36) NOT NULL DEFAULT ''", t.table))
+			fmt.Sprintf("UPDATE `%s` SET `site_id` = ? WHERE `site_id` = ''", table),
+			constant.DefaultSiteID)
 		if err != nil {
-			log.Warnf("add site_id to %s (may already exist): %v", t.table, err)
-		}
-		_, _ = x.Context(ctx).Exec(
-			fmt.Sprintf("CREATE INDEX `idx_%s_site_id` ON `%s` (`site_id`)", t.table, t.table))
-	}
-
-	defaultSite := &entity.Site{
-		ID:     constant.DefaultSiteID,
-		Name:   "Default",
-		Slug:   "default",
-		Status: entity.SiteStatusActive,
-	}
-	_, err := x.Context(ctx).Insert(defaultSite)
-	if err != nil {
-		return fmt.Errorf("insert default site: %w", err)
-	}
-
-	// config and site_info rows stay as global defaults (site_id = '')
-	// so sites without overrides inherit them
-	noBackfill := map[string]bool{"config": true, "site_info": true}
-	for _, t := range tables {
-		if noBackfill[t.table] {
-			continue
-		}
-		_, err := x.Context(ctx).Exec(
-			fmt.Sprintf("UPDATE `%s` SET `site_id` = ? WHERE `site_id` = ''", t.table),
-			defaultSite.ID)
-		if err != nil {
-			log.Warnf("backfill site_id on %s: %v", t.table, err)
+			return fmt.Errorf("backfill site_id on %s: %w", table, err)
 		}
 	}
 
-	_, err = x.Context(ctx).Exec(`
-		INSERT INTO user_site_rank (user_id, site_id, `+"`rank`"+`, created_at, updated_at)
-		SELECT id, ?, `+"`rank`"+`, NOW(), NOW() FROM `+"`user`"+` WHERE `+"`rank`"+` > 0`,
-		defaultSite.ID)
-	if err != nil {
-		log.Warnf("backfill user_site_rank: %v", err)
+	if err := backfillDefaultSiteRoles(ctx, x); err != nil {
+		return fmt.Errorf("backfill user_site_role_rel: %w", err)
 	}
 
-	_, err = x.Context(ctx).Exec(`
-		INSERT INTO user_site_role_rel (user_id, site_id, role_id, created_at, updated_at)
-		SELECT user_id, ?, role_id, NOW(), NOW() FROM user_role_rel`,
-		defaultSite.ID)
-	if err != nil {
-		log.Warnf("backfill user_site_role_rel: %v", err)
-	}
-
-	// Replace single-column unique indexes with composite (column, site_id).
-	// The composite indexes are created by xorm Sync() from the entity
-	// definitions; here we just drop the leftover single-column ones.
+	// Drop the now-redundant single-column unique indexes; the composite
+	// (column, site_id) uniques created above replace them.
 	uniqueFixups := []struct{ table, oldIdx string }{
 		{"tag", "UQE_tag_slug_name"},
 		{"config", "UQE_config_key"},
@@ -117,6 +215,67 @@ func addMultiSiteSupport(ctx context.Context, x *xorm.Engine) error {
 		return fmt.Errorf("drop legacy unique indexes: %w", err)
 	}
 
+	return nil
+}
+
+// ensureDefaultSite inserts the default site row if it is not present yet.
+func ensureDefaultSite(ctx context.Context, x *xorm.Engine) error {
+	exist, err := x.Context(ctx).ID(constant.DefaultSiteID).Exist(&entity.Site{})
+	if err != nil {
+		return fmt.Errorf("check default site: %w", err)
+	}
+	if exist {
+		return nil
+	}
+	_, err = x.Context(ctx).Insert(&entity.Site{
+		ID:     constant.DefaultSiteID,
+		Name:   "Default",
+		Slug:   "default",
+		Status: entity.SiteStatusActive,
+	})
+	if err != nil {
+		return fmt.Errorf("insert default site: %w", err)
+	}
+	return nil
+}
+
+// backfillDefaultSiteRoles copies each user's global role onto the default
+// site. user_role_rel may hold several roles per user while
+// user_site_role_rel is unique on (user_id, site_id), so the most privileged
+// role wins. Runs in Go rather than INSERT…SELECT: portable across dialects
+// (no NOW()) and idempotent (skips users that already have a row).
+func backfillDefaultSiteRoles(ctx context.Context, x *xorm.Engine) error {
+	var rels []entity.UserRoleRel
+	if err := x.Context(ctx).Find(&rels); err != nil {
+		return fmt.Errorf("read user_role_rel: %w", err)
+	}
+	// Role IDs per init_data: 1 = User, 2 = Admin, 3 = Moderator.
+	privilege := map[int]int{1: 1, 3: 2, 2: 3}
+	best := make(map[string]int, len(rels))
+	for _, rel := range rels {
+		if cur, ok := best[rel.UserID]; !ok || privilege[rel.RoleID] > privilege[cur] {
+			best[rel.UserID] = rel.RoleID
+		}
+	}
+	for userID, roleID := range best {
+		exist, err := x.Context(ctx).
+			Where("user_id = ? AND site_id = ?", userID, constant.DefaultSiteID).
+			Exist(&entity.UserSiteRoleRel{})
+		if err != nil {
+			return fmt.Errorf("check site role for user %s: %w", userID, err)
+		}
+		if exist {
+			continue
+		}
+		_, err = x.Context(ctx).Insert(&entity.UserSiteRoleRel{
+			UserID: userID,
+			SiteID: constant.DefaultSiteID,
+			RoleID: roleID,
+		})
+		if err != nil {
+			return fmt.Errorf("insert site role for user %s: %w", userID, err)
+		}
+	}
 	return nil
 }
 
