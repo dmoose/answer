@@ -64,69 +64,114 @@ func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *e
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
-	sr.setCache(ctx, siteType, data)
+	sr.setCache(ctx, siteID, siteType, data)
 	return
 }
 
 // GetByType returns the per-site override when present, falling back to the
 // global default row.
+//
+// Cache entries are keyed by the tier the ROW belongs to (the override's
+// site, or the global key), never by the requesting site: caching a global
+// row under a site-qualified key would leave every non-overridden site
+// serving stale values for up to the TTL after a global edit, because the
+// edit only rewrites the global key. A site with no override caches a short
+// "absent" marker so the fallback doesn't hit the DB on every request.
 func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutCache ...bool) (siteInfo *entity.SiteInfo, exist bool, err error) {
-	if len(withoutCache) == 0 {
-		siteInfo = sr.getCache(ctx, siteType)
-		if siteInfo != nil {
-			return siteInfo, true, nil
+	useCache := len(withoutCache) == 0
+	siteID := multisite.TierSiteID(ctx)
+
+	if siteID != "" {
+		overrideKnownAbsent := false
+		if useCache {
+			if info, state := sr.getCache(ctx, siteID, siteType); state == siteInfoCacheHit {
+				return info, true, nil
+			} else if state == siteInfoCacheAbsent {
+				overrideKnownAbsent = true
+			}
+		}
+		if !overrideKnownAbsent {
+			siteInfo = &entity.SiteInfo{}
+			exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ?", siteType, siteID).Get(siteInfo)
+			if err != nil {
+				return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+			}
+			if exist {
+				sr.setCache(ctx, siteID, siteType, siteInfo)
+				return
+			}
+			sr.markOverrideAbsent(ctx, siteID, siteType)
 		}
 	}
-	siteID := multisite.TierSiteID(ctx)
-	if siteID != "" {
-		siteInfo = &entity.SiteInfo{}
-		exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ?", siteType, siteID).Get(siteInfo)
-		if err != nil {
-			err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-			return nil, false, err
-		}
-		if exist {
-			sr.setCache(ctx, siteType, siteInfo)
-			return
+
+	if useCache {
+		if info, state := sr.getCache(ctx, "", siteType); state == siteInfoCacheHit {
+			return info, true, nil
 		}
 	}
 	siteInfo = &entity.SiteInfo{}
 	exist, err = sr.data.DB.Context(ctx).Where("type = ? AND site_id = ''", siteType).Get(siteInfo)
 	if err != nil {
-		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		return nil, false, err
+		return nil, false, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	if exist {
-		sr.setCache(ctx, siteType, siteInfo)
+		sr.setCache(ctx, "", siteType, siteInfo)
 	}
 	return
 }
 
-func (sr *siteInfoRepo) cachePrefix(ctx context.Context) string {
-	if siteID := multisite.TierSiteID(ctx); siteID != "" {
-		return siteID + ":"
+type siteInfoCacheState int
+
+const (
+	siteInfoCacheMiss siteInfoCacheState = iota
+	siteInfoCacheHit
+	// siteInfoCacheAbsent means "this site has no override row" — fall to
+	// the global tier without re-querying the site row.
+	siteInfoCacheAbsent
+)
+
+// siteInfoOverrideAbsentMarker is stored under a site's cache key when the
+// site has no override row; it is not valid SiteInfo JSON.
+const siteInfoOverrideAbsentMarker = "__absent__"
+
+func siteInfoCacheKey(siteID, siteType string) string {
+	if siteID == "" {
+		return constant.SiteInfoCacheKey + siteType
 	}
-	return ""
+	return constant.SiteInfoCacheKey + siteID + ":" + siteType
 }
 
-func (sr *siteInfoRepo) getCache(ctx context.Context, siteType string) (siteInfo *entity.SiteInfo) {
-	siteInfoCache, exist, err := sr.data.Cache.GetString(ctx, constant.SiteInfoCacheKey+sr.cachePrefix(ctx)+siteType)
-	if err != nil {
-		return nil
+func (sr *siteInfoRepo) getCache(ctx context.Context, siteID, siteType string) (*entity.SiteInfo, siteInfoCacheState) {
+	siteInfoCache, exist, err := sr.data.Cache.GetString(ctx, siteInfoCacheKey(siteID, siteType))
+	if err != nil || !exist {
+		return nil, siteInfoCacheMiss
 	}
-	if !exist {
-		return nil
+	if siteInfoCache == siteInfoOverrideAbsentMarker {
+		return nil, siteInfoCacheAbsent
 	}
-	siteInfo = &entity.SiteInfo{}
-	_ = json.Unmarshal([]byte(siteInfoCache), siteInfo)
-	return siteInfo
+	siteInfo := &entity.SiteInfo{}
+	if err := json.Unmarshal([]byte(siteInfoCache), siteInfo); err != nil {
+		log.Errorf("unmarshal cached site info %s: %v", siteType, err)
+		return nil, siteInfoCacheMiss
+	}
+	return siteInfo, siteInfoCacheHit
 }
 
-func (sr *siteInfoRepo) setCache(ctx context.Context, siteType string, siteInfo *entity.SiteInfo) {
-	siteInfoCache, _ := json.Marshal(siteInfo)
-	err := sr.data.Cache.SetString(ctx,
-		constant.SiteInfoCacheKey+sr.cachePrefix(ctx)+siteType, string(siteInfoCache), constant.SiteInfoCacheTime)
+func (sr *siteInfoRepo) setCache(ctx context.Context, siteID, siteType string, siteInfo *entity.SiteInfo) {
+	siteInfoCache, err := json.Marshal(siteInfo)
 	if err != nil {
+		log.Errorf("marshal site info %s for cache: %v", siteType, err)
+		return
+	}
+	if err := sr.data.Cache.SetString(ctx,
+		siteInfoCacheKey(siteID, siteType), string(siteInfoCache), constant.SiteInfoCacheTime); err != nil {
+		log.Error(err)
+	}
+}
+
+func (sr *siteInfoRepo) markOverrideAbsent(ctx context.Context, siteID, siteType string) {
+	if err := sr.data.Cache.SetString(ctx,
+		siteInfoCacheKey(siteID, siteType), siteInfoOverrideAbsentMarker, constant.SiteInfoCacheTime); err != nil {
 		log.Error(err)
 	}
 }

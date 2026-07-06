@@ -21,22 +21,29 @@ package controller
 
 import (
 	"github.com/apache/answer/internal/base/handler"
+	"github.com/apache/answer/internal/base/middleware"
+	"github.com/apache/answer/internal/base/reason"
+	"github.com/apache/answer/internal/service/service_config"
 	"github.com/apache/answer/internal/service/site"
 	"github.com/gin-gonic/gin"
+	"github.com/segmentfault/pacman/errors"
 )
 
 type SiteController struct {
 	siteService           *site.SiteService
 	networkProfileService *site.NetworkProfileService
+	serviceConfig         *service_config.ServiceConfig
 }
 
 func NewSiteController(
 	siteService *site.SiteService,
 	networkProfileService *site.NetworkProfileService,
+	serviceConfig *service_config.ServiceConfig,
 ) *SiteController {
 	return &SiteController{
 		siteService:           siteService,
 		networkProfileService: networkProfileService,
+		serviceConfig:         serviceConfig,
 	}
 }
 
@@ -49,6 +56,15 @@ func (sc *SiteController) GetNetworkProfile(ctx *gin.Context) {
 	userID := ctx.Query("user_id")
 	if userID == "" {
 		handler.HandleResponse(ctx, nil, nil)
+		return
+	}
+	// The extended directory profile follows directory visibility: when the
+	// directory is enabled and members-only (the default), anonymous
+	// requests are rejected like the member list itself.
+	if sc.serviceConfig != nil && sc.serviceConfig.DirectoryEnabled &&
+		!sc.serviceConfig.DirectoryPublic() &&
+		middleware.GetLoginUserIDFromContext(ctx) == "" {
+		handler.HandleResponse(ctx, errors.Unauthorized(reason.UnauthorizedError), nil)
 		return
 	}
 	profile, err := sc.networkProfileService.GetNetworkProfile(ctx, userID)

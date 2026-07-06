@@ -70,10 +70,24 @@ func (mc *MemberDirectoryController) disabled(ctx *gin.Context) bool {
 	return true
 }
 
+// blockedByVisibility returns true and writes a 401 when the directory is
+// members-only (the default) and the request is anonymous. Read handlers on
+// the public router group call this after the disabled check.
+func (mc *MemberDirectoryController) blockedByVisibility(ctx *gin.Context) bool {
+	if mc.serviceConfig.DirectoryPublic() {
+		return false
+	}
+	if middleware.GetLoginUserIDFromContext(ctx) != "" {
+		return false
+	}
+	handler.HandleResponse(ctx, errors.Unauthorized(reason.UnauthorizedError), nil)
+	return true
+}
+
 // ListTags returns the active tag catalog. Optional `kind` query (1=skill,
 // 2=interest, 3=both) narrows the list for the picker UIs.
 func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
-	if mc.disabled(ctx) {
+	if mc.disabled(ctx) || mc.blockedByVisibility(ctx) {
 		return
 	}
 	kind := 0
@@ -91,7 +105,7 @@ func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
 
 // ListMembers runs the faceted directory query and returns a page of cards.
 func (mc *MemberDirectoryController) ListMembers(ctx *gin.Context) {
-	if mc.disabled(ctx) {
+	if mc.disabled(ctx) || mc.blockedByVisibility(ctx) {
 		return
 	}
 	req := &schema.DirectorySearchReq{}

@@ -20,11 +20,13 @@
 package controller_admin
 
 import (
+	"context"
 	"html"
 	"net/http"
 
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"
+	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/siteinfo"
 	"github.com/gin-gonic/gin"
@@ -43,6 +45,20 @@ func NewSiteInfoController(siteInfoService *siteinfo.SiteInfoService) *SiteInfoC
 	}
 }
 
+// presentationSiteCtx returns a context targeting the sub-site named by the
+// optional site_id query parameter. The admin API is deliberately site-less,
+// so per-site presentation endpoints (general / branding / custom css-html)
+// take their target explicitly: no site_id (or the default site) addresses
+// the global default row, a sub-site ID addresses that site's override.
+// Reads through this context resolve override-or-global, exactly what the
+// admin needs to see while editing.
+func presentationSiteCtx(ctx *gin.Context) context.Context {
+	if siteID := ctx.Query("site_id"); siteID != "" {
+		return multisite.WithSiteID(ctx, siteID)
+	}
+	return ctx
+}
+
 // GetGeneral get site general information
 // @Summary get site general information
 // @Description get site general information
@@ -52,7 +68,7 @@ func NewSiteInfoController(siteInfoService *siteinfo.SiteInfoService) *SiteInfoC
 // @Success 200 {object} handler.RespBody{data=schema.SiteGeneralResp}
 // @Router /answer/admin/api/siteinfo/general [get]
 func (sc *SiteInfoController) GetGeneral(ctx *gin.Context) {
-	resp, err := sc.siteInfoService.GetSiteGeneral(ctx)
+	resp, err := sc.siteInfoService.GetSiteGeneral(presentationSiteCtx(ctx))
 	handler.HandleResponse(ctx, err, resp)
 }
 
@@ -91,7 +107,7 @@ func (sc *SiteInfoController) GetUsersSettings(ctx *gin.Context) {
 // @Success 200 {object} handler.RespBody{data=schema.SiteBrandingResp}
 // @Router /answer/admin/api/siteinfo/branding [get]
 func (sc *SiteInfoController) GetSiteBranding(ctx *gin.Context) {
-	resp, err := sc.siteInfoService.GetSiteBranding(ctx)
+	resp, err := sc.siteInfoService.GetSiteBranding(presentationSiteCtx(ctx))
 	handler.HandleResponse(ctx, err, resp)
 }
 
@@ -195,7 +211,7 @@ func (sc *SiteInfoController) GetSiteLogin(ctx *gin.Context) {
 // @Success 200 {object} handler.RespBody{data=schema.SiteCustomCssHTMLResp}
 // @Router /answer/admin/api/siteinfo/custom-css-html [get]
 func (sc *SiteInfoController) GetSiteCustomCssHTML(ctx *gin.Context) {
-	resp, err := sc.siteInfoService.GetSiteCustomCssHTML(ctx)
+	resp, err := sc.siteInfoService.GetSiteCustomCssHTML(presentationSiteCtx(ctx))
 	handler.HandleResponse(ctx, err, resp)
 }
 
@@ -290,7 +306,7 @@ func (sc *SiteInfoController) UpdateGeneral(ctx *gin.Context) {
 	if handler.BindAndCheck(ctx, &req) {
 		return
 	}
-	err := sc.siteInfoService.SaveSiteGeneral(ctx, req)
+	err := sc.siteInfoService.SaveSiteGeneral(presentationSiteCtx(ctx), req)
 	req.Name = html.UnescapeString(req.Name)
 	handler.HandleResponse(ctx, err, req)
 }
@@ -345,16 +361,23 @@ func (sc *SiteInfoController) UpdateBranding(ctx *gin.Context) {
 	if handler.BindAndCheck(ctx, req) {
 		return
 	}
-	currentBranding, getBrandingErr := sc.siteInfoService.GetSiteBranding(ctx)
-	if getBrandingErr == nil {
-		cleanUpErr := sc.siteInfoService.CleanUpRemovedBrandingFiles(ctx, req, currentBranding)
-		if cleanUpErr != nil {
-			log.Errorf("failed to clean up removed branding file(s): %v", cleanUpErr)
+	targetCtx := presentationSiteCtx(ctx)
+	// File cleanup only runs for global edits: a per-site override edit
+	// compares against a resolved value that may be the global fallback,
+	// and deleting files based on that comparison could orphan branding
+	// still referenced by the global row or other sites.
+	if ctx.Query("site_id") == "" {
+		currentBranding, getBrandingErr := sc.siteInfoService.GetSiteBranding(ctx)
+		if getBrandingErr == nil {
+			cleanUpErr := sc.siteInfoService.CleanUpRemovedBrandingFiles(ctx, req, currentBranding)
+			if cleanUpErr != nil {
+				log.Errorf("failed to clean up removed branding file(s): %v", cleanUpErr)
+			}
+		} else {
+			log.Errorf("failed to get current site branding: %v", getBrandingErr)
 		}
-	} else {
-		log.Errorf("failed to get current site branding: %v", getBrandingErr)
 	}
-	saveErr := sc.siteInfoService.SaveSiteBranding(ctx, req)
+	saveErr := sc.siteInfoService.SaveSiteBranding(targetCtx, req)
 	handler.HandleResponse(ctx, saveErr, nil)
 }
 
@@ -484,7 +507,7 @@ func (sc *SiteInfoController) UpdateSiteCustomCssHTML(ctx *gin.Context) {
 	if handler.BindAndCheck(ctx, req) {
 		return
 	}
-	err := sc.siteInfoService.SaveSiteCustomCssHTML(ctx, req)
+	err := sc.siteInfoService.SaveSiteCustomCssHTML(presentationSiteCtx(ctx), req)
 	handler.HandleResponse(ctx, err, nil)
 }
 

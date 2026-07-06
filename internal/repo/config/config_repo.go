@@ -27,7 +27,6 @@ import (
 	"github.com/apache/answer/internal/base/data"
 	"github.com/apache/answer/internal/base/reason"
 	"github.com/apache/answer/internal/entity"
-	"github.com/apache/answer/internal/multisite"
 	"github.com/apache/answer/internal/service/config"
 	"github.com/segmentfault/pacman/errors"
 	"github.com/segmentfault/pacman/log"
@@ -41,16 +40,8 @@ func NewConfigRepo(data *data.Data) config.ConfigRepo {
 	return &configRepo{data: data}
 }
 
-func (cr configRepo) cachePrefix(ctx context.Context) string {
-	if siteID := multisite.TierSiteID(ctx); siteID != "" {
-		return siteID + ":"
-	}
-	return ""
-}
-
 func (cr configRepo) GetConfigByID(ctx context.Context, id int) (c *entity.Config, err error) {
-	prefix := cr.cachePrefix(ctx)
-	cacheKey := fmt.Sprintf("%s%s%d", constant.ConfigID2KEYCacheKeyPrefix, prefix, id)
+	cacheKey := fmt.Sprintf("%s%d", constant.ConfigID2KEYCacheKeyPrefix, id)
 	cacheData, exist, err := cr.data.Cache.GetString(ctx, cacheKey)
 	if err == nil && exist && len(cacheData) > 0 {
 		c = &entity.Config{}
@@ -60,26 +51,15 @@ func (cr configRepo) GetConfigByID(ctx context.Context, id int) (c *entity.Confi
 		}
 	}
 
+	// Functional config is org-global by design: one row set (site_id=''),
+	// one cache key. Per-site presentation lives in site_info, never here.
+	// (A per-site override would also fork the auto-increment ID that
+	// activity rows store as activity_type, orphaning history.)
 	c = &entity.Config{}
-	siteID := multisite.TierSiteID(ctx)
-
-	// Try site-specific config first
-	if siteID != "" {
-		exist, err = cr.data.DB.Context(ctx).Where("id = ? AND site_id = ?", id, siteID).Get(c)
-		if err != nil {
-			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
+	exist, err = cr.data.DB.Context(ctx).Where("id = ? AND site_id = ''", id).Get(c)
+	if err != nil {
+		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
-
-	// Fall back to global default
-	if !exist {
-		c = &entity.Config{}
-		exist, err = cr.data.DB.Context(ctx).Where("id = ? AND site_id = ''", id).Get(c)
-		if err != nil {
-			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-	}
-
 	if !exist {
 		return nil, fmt.Errorf("config not found by id: %d", id)
 	}
@@ -91,8 +71,7 @@ func (cr configRepo) GetConfigByID(ctx context.Context, id int) (c *entity.Confi
 }
 
 func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.Config, err error) {
-	prefix := cr.cachePrefix(ctx)
-	cacheKey := constant.ConfigKEY2ContentCacheKeyPrefix + prefix + key
+	cacheKey := constant.ConfigKEY2ContentCacheKeyPrefix + key
 	cacheData, exist, err := cr.data.Cache.GetString(ctx, cacheKey)
 	if err == nil && exist && len(cacheData) > 0 {
 		c = &entity.Config{}
@@ -103,25 +82,10 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 	}
 
 	c = &entity.Config{}
-	siteID := multisite.TierSiteID(ctx)
-
-	// Try site-specific config first
-	if siteID != "" {
-		exist, err = cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(c)
-		if err != nil {
-			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
+	exist, err = cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(c)
+	if err != nil {
+		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
-
-	// Fall back to global default
-	if !exist {
-		c = &entity.Config{}
-		exist, err = cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(c)
-		if err != nil {
-			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-	}
-
 	if !exist {
 		return nil, fmt.Errorf("config not found by key: %s", key)
 	}
@@ -134,19 +98,6 @@ func (cr configRepo) GetConfigByKey(ctx context.Context, key string) (c *entity.
 
 func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *entity.Config, err error) {
 	c = &entity.Config{}
-	siteID := multisite.TierSiteID(ctx)
-
-	if siteID != "" {
-		exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(c)
-		if err != nil {
-			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-		if exist {
-			return c, nil
-		}
-	}
-
-	c = &entity.Config{}
 	exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(c)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
@@ -158,42 +109,8 @@ func (cr configRepo) GetConfigByKeyFromDB(ctx context.Context, key string) (c *e
 }
 
 func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string) (err error) {
-	siteID := multisite.TierSiteID(ctx)
-
-	if siteID != "" {
-		// Site context: update the site override if present, else insert one.
-		// Never touch the global row from a site request.
-		row := &entity.Config{}
-		exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ?", key, siteID).Get(row)
-		if err != nil {
-			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-		if exist {
-			if _, err := cr.data.DB.Context(ctx).ID(row.ID).Update(&entity.Config{Value: value}); err != nil {
-				return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-			}
-			row.Value = value
-			cr.cacheConfig(ctx, key, row)
-			return nil
-		}
-		// Sanity-check the global key exists so we don't create orphans.
-		global := &entity.Config{}
-		globalExist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(global)
-		if err != nil {
-			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-		if !globalExist {
-			return errors.BadRequest(reason.ObjectNotFound)
-		}
-		override := &entity.Config{Key: key, Value: value, SiteID: siteID}
-		if _, err := cr.data.DB.Context(ctx).Insert(override); err != nil {
-			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
-		}
-		cr.cacheConfig(ctx, key, override)
-		return nil
-	}
-
-	// No site context: update the global default row.
+	// Config writes always target the global row: functional config is
+	// org-global by design (see GetConfigByID).
 	row := &entity.Config{}
 	exist, err := cr.data.DB.Context(ctx).Where("`key` = ? AND site_id = ''", key).Get(row)
 	if err != nil {
@@ -211,14 +128,13 @@ func (cr configRepo) UpdateConfig(ctx context.Context, key string, value string)
 }
 
 func (cr configRepo) cacheConfig(ctx context.Context, key string, c *entity.Config) {
-	prefix := cr.cachePrefix(ctx)
 	cacheVal := c.JsonString()
 	if err := cr.data.Cache.SetString(ctx,
-		constant.ConfigKEY2ContentCacheKeyPrefix+prefix+key, cacheVal, constant.ConfigCacheTime); err != nil {
+		constant.ConfigKEY2ContentCacheKeyPrefix+key, cacheVal, constant.ConfigCacheTime); err != nil {
 		log.Error(err)
 	}
 	if err := cr.data.Cache.SetString(ctx,
-		fmt.Sprintf("%s%s%d", constant.ConfigID2KEYCacheKeyPrefix, prefix, c.ID), cacheVal, constant.ConfigCacheTime); err != nil {
+		fmt.Sprintf("%s%d", constant.ConfigID2KEYCacheKeyPrefix, c.ID), cacheVal, constant.ConfigCacheTime); err != nil {
 		log.Error(err)
 	}
 }

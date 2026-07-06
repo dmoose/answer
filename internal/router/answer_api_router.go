@@ -472,6 +472,7 @@ func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {
 	// multi-site management
 	r.POST("/site", a.siteAdminController.AddSite)
 	r.PUT("/site", a.siteAdminController.UpdateSite)
+	r.PUT("/site/status", a.siteAdminController.SetSiteStatus)
 	r.GET("/site", a.siteAdminController.GetSite)
 	r.GET("/sites", a.siteAdminController.GetSiteList)
 	r.PUT("/site/role", a.siteAdminController.SetUserSiteRole)

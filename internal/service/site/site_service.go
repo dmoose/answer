@@ -37,6 +37,7 @@ type SiteRepo interface {
 	GetSite(ctx context.Context, id string) (*entity.Site, bool, error)
 	GetSiteBySlug(ctx context.Context, slug string) (*entity.Site, bool, error)
 	GetAllSites(ctx context.Context) ([]*entity.Site, error)
+	GetAllSitesIncludingInactive(ctx context.Context) ([]*entity.Site, error)
 }
 
 type SiteService struct {
@@ -69,11 +70,20 @@ func validateSlug(slug string) error {
 	return nil
 }
 
+// GetAllSitesForAdmin lists every site including suspended ones, for the
+// admin management UI (a suspended site must stay visible to be reactivated).
+func (s *SiteService) GetAllSitesForAdmin(ctx context.Context) ([]*entity.Site, error) {
+	return s.siteRepo.GetAllSitesIncludingInactive(ctx)
+}
+
 func (s *SiteService) AddSite(ctx context.Context, name, slug, description, baseURL string) (*entity.Site, error) {
 	if err := validateSlug(slug); err != nil {
 		return nil, err
 	}
-	_, exist, _ := s.siteRepo.GetSiteBySlug(ctx, slug)
+	_, exist, err := s.siteRepo.GetSiteBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
 	if exist {
 		return nil, errors.BadRequest(reason.ObjectNotFound).WithMsg("site slug already exists")
 	}

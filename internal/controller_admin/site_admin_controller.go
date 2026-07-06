@@ -78,8 +78,26 @@ func (sc *SiteAdminController) GetSite(ctx *gin.Context) {
 }
 
 func (sc *SiteAdminController) GetSiteList(ctx *gin.Context) {
-	sites, err := sc.siteService.GetAllSites(ctx)
+	// Admin listing includes suspended sites: a site that disappears from
+	// every list the moment it is suspended can never be reactivated.
+	sites, err := sc.siteService.GetAllSitesForAdmin(ctx)
 	handler.HandleResponse(ctx, err, sites)
+}
+
+// SetSiteStatus activates or suspends a sub-site.
+func (sc *SiteAdminController) SetSiteStatus(ctx *gin.Context) {
+	req := &struct {
+		SiteID string `json:"site_id" binding:"required"`
+		Active bool   `json:"active"`
+	}{}
+	if handler.BindAndCheck(ctx, req) {
+		return
+	}
+	err := sc.siteService.SetSiteStatus(ctx, req.SiteID, req.Active)
+	if err == nil {
+		sc.siteMiddleware.RefreshSiteCache()
+	}
+	handler.HandleResponse(ctx, err, nil)
 }
 
 func (sc *SiteAdminController) SetUserSiteRole(ctx *gin.Context) {

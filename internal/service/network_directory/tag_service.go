@@ -79,6 +79,13 @@ func (s *ProfileTagService) ListActive(ctx context.Context, kind int) ([]*schema
 // pre-check so the client gets a clean BadRequest instead of a 500.
 func (s *ProfileTagService) AdminUpsert(ctx context.Context, req *schema.AdminProfileTagUpsertReq) (*schema.ProfileTagInfo, error) {
 	if req.ID != "" {
+		// Slug changes persist, so a collision with a DIFFERENT tag must be
+		// rejected up front (the UNIQUE index would 500 otherwise).
+		if existing, exists, err := s.tagRepo.GetBySlug(ctx, req.Slug); err != nil {
+			return nil, err
+		} else if exists && existing.ID != req.ID {
+			return nil, errors.BadRequest(reason.UnknownError).WithMsg("tag slug already in use")
+		}
 		t := &entity.ProfileTag{
 			ID:          req.ID,
 			Slug:        req.Slug,

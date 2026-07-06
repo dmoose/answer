@@ -75,6 +75,14 @@ func (m *mockSiteRepo) GetAllSites(_ context.Context) ([]*entity.Site, error) {
 	return sites, nil
 }
 
+func (m *mockSiteRepo) GetAllSitesIncludingInactive(_ context.Context) ([]*entity.Site, error) {
+	var sites []*entity.Site
+	for _, s := range m.sites {
+		sites = append(sites, s)
+	}
+	return sites, nil
+}
+
 func TestSiteService_AddSite(t *testing.T) {
 	repo := newMockSiteRepo()
 	svc := NewSiteService(repo, nil)

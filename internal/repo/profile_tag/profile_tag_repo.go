@@ -72,12 +72,17 @@ func (r *ProfileTagRepo) GetBySlug(ctx context.Context, slug string) (*entity.Pr
 	return t, exist, nil
 }
 
+// GetByIDs returns the ACTIVE tags among ids. Retired tags stay attached to
+// profiles in the join table but must stop rendering everywhere (directory
+// cards, network profiles) the moment an admin deactivates them; admin
+// curation uses List, which sees all statuses.
 func (r *ProfileTagRepo) GetByIDs(ctx context.Context, ids []string) ([]*entity.ProfileTag, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 	var tags []*entity.ProfileTag
-	err := r.data.DB.Context(ctx).In("id", ids).Find(&tags)
+	err := r.data.DB.Context(ctx).In("id", ids).
+		Where("status = ?", entity.ProfileTagStatusActive).Find(&tags)
 	if err != nil {
 		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
@@ -93,10 +98,13 @@ func (r *ProfileTagRepo) Insert(ctx context.Context, t *entity.ProfileTag) error
 }
 
 func (r *ProfileTagRepo) Update(ctx context.Context, t *entity.ProfileTag) error {
-	_, err := r.data.DB.Context(ctx).ID(t.ID).
-		Cols("name", "kind", "description", "status").Update(t)
+	affected, err := r.data.DB.Context(ctx).ID(t.ID).
+		Cols("slug", "name", "kind", "description", "status").Update(t)
 	if err != nil {
 		return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+	}
+	if affected == 0 {
+		return errors.NotFound(reason.ObjectNotFound)
 	}
 	return nil
 }

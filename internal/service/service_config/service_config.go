@@ -29,4 +29,15 @@ type ServiceConfig struct {
 	// conf/config.yaml for deployments that want the guild directory UI;
 	// leave false for plain product-support Q&A deployments.
 	DirectoryEnabled bool `json:"directory_enabled" mapstructure:"directory_enabled" yaml:"directory_enabled"`
+	// DirectoryVisibility controls who can read the directory surfaces
+	// (member list, tag catalog, extended network profiles):
+	//   "members-only" (default) — requires a logged-in account
+	//   "public"                 — anonymous reads allowed
+	DirectoryVisibility string `json:"directory_visibility" mapstructure:"directory_visibility" yaml:"directory_visibility"`
+}
+
+// DirectoryPublic reports whether directory surfaces are anonymously
+// readable. Any value other than an explicit "public" means members-only.
+func (sc *ServiceConfig) DirectoryPublic() bool {
+	return sc != nil && sc.DirectoryVisibility == "public"
 }

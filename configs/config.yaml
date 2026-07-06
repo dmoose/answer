@@ -36,6 +36,8 @@ service_config:
   clean_up_uploads: true
   clean_orphan_uploads_period_hours: 48
   purge_deleted_files_period_days: 30
+  # directory_enabled: false          # member directory / extended profiles
+  # directory_visibility: members-only # members-only (default) | public
 ui:
   public_url: '/'
   api_url: '/'

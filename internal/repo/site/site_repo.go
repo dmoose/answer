@@ -97,3 +97,15 @@ func (r *siteRepo) GetAllSites(ctx context.Context) ([]*entity.Site, error) {
 	}
 	return sites, nil
 }
+
+// GetAllSitesIncludingInactive lists every site regardless of status. Admin
+// management needs this: a suspended site that never shows up in any list
+// can never be reactivated.
+func (r *siteRepo) GetAllSitesIncludingInactive(ctx context.Context) ([]*entity.Site, error) {
+	var sites []*entity.Site
+	err := r.data.DB.Context(ctx).Find(&sites)
+	if err != nil {
+		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+	}
+	return sites, nil
+}

@@ -26,23 +26,27 @@ import (
 	"github.com/apache/answer/internal/repo/member_directory"
 	"github.com/apache/answer/internal/repo/profile_tag"
 	"github.com/apache/answer/internal/schema"
+	"github.com/apache/answer/internal/service/siteinfo_common"
 )
 
 // MemberDirectoryService assembles the directory page: faceted query against
 // the user × network_profile join, plus a per-row tag fetch so each card
 // renders with its skill / interest chips.
 type MemberDirectoryService struct {
-	directoryRepo *member_directory.MemberDirectoryRepo
-	tagRepo       *profile_tag.ProfileTagRepo
+	directoryRepo   *member_directory.MemberDirectoryRepo
+	tagRepo         *profile_tag.ProfileTagRepo
+	siteInfoService siteinfo_common.SiteInfoCommonService
 }
 
 func NewMemberDirectoryService(
 	directoryRepo *member_directory.MemberDirectoryRepo,
 	tagRepo *profile_tag.ProfileTagRepo,
+	siteInfoService siteinfo_common.SiteInfoCommonService,
 ) *MemberDirectoryService {
 	return &MemberDirectoryService{
-		directoryRepo: directoryRepo,
-		tagRepo:       tagRepo,
+		directoryRepo:   directoryRepo,
+		tagRepo:         tagRepo,
+		siteInfoService: siteInfoService,
 	}
 }
 
@@ -66,11 +70,15 @@ func (s *MemberDirectoryService) Search(ctx context.Context, req *schema.Directo
 	cards := make([]*schema.DirectoryMember, 0, len(rows))
 	userIDs := make([]string, 0, len(rows))
 	for _, r := range rows {
+		// The stored avatar column is a JSON blob; resolve it to a plain
+		// URL the same way every other public surface does. Email and
+		// status feed the resolver and are never serialized.
+		avatar := s.siteInfoService.FormatAvatar(ctx, r.Avatar, r.EMail, r.Status).GetURL()
 		cards = append(cards, &schema.DirectoryMember{
 			UserID:              r.UserID,
 			Username:            r.Username,
 			DisplayName:         r.DisplayName,
-			Avatar:              r.Avatar,
+			Avatar:              avatar,
 			Reputation:          r.Rank,
 			Headline:            r.Headline,
 			Pronouns:            r.Pronouns,

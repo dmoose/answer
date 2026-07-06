@@ -54,11 +54,15 @@ type DirectoryQuery struct {
 
 // DirectoryRow flattens the join columns into a single struct. The repo emits
 // these; the service layer assembles tags and shapes the API response.
+// EMail and Status never leave the server: they exist so the service can run
+// the stored avatar blob through FormatAvatar like every other public surface.
 type DirectoryRow struct {
 	UserID              string `xorm:"'user_id'"`
 	Username            string `xorm:"'username'"`
 	DisplayName         string `xorm:"'display_name'"`
 	Avatar              string `xorm:"'avatar'"`
+	EMail               string `xorm:"'e_mail'"`
+	Status              int    `xorm:"'status'"`
 	Rank                int    `xorm:"'rank'"`
 	Headline            string `xorm:"'headline'"`
 	Pronouns            string `xorm:"'pronouns'"`
@@ -99,11 +103,16 @@ func (r *MemberDirectoryRepo) Search(ctx context.Context, q *DirectoryQuery) ([]
 	}
 
 	if s := strings.TrimSpace(q.Q); s != "" {
+		// Escape LIKE metacharacters so user input can't turn into
+		// wildcard scans (q=%%% would otherwise match everything). SQLite
+		// only honors the escape with an explicit ESCAPE clause, so these
+		// are spelled out rather than using builder.Like.
+		s = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 		like := "%" + s + "%"
 		cond = cond.And(builder.Or(
-			builder.Like{"`user`.username", like},
-			builder.Like{"`user`.display_name", like},
-			builder.Like{"np.headline", like},
+			builder.Expr("`user`.username LIKE ? ESCAPE '\\'", like),
+			builder.Expr("`user`.display_name LIKE ? ESCAPE '\\'", like),
+			builder.Expr("np.headline LIKE ? ESCAPE '\\'", like),
 		))
 	}
 
@@ -122,7 +131,7 @@ func (r *MemberDirectoryRepo) Search(ctx context.Context, q *DirectoryQuery) ([]
 
 	session := r.data.DB.Context(ctx).
 		Table("user").
-		Select("`user`.id AS user_id, `user`.username, `user`.display_name, `user`.avatar, `user`.rank, "+
+		Select("`user`.id AS user_id, `user`.username, `user`.display_name, `user`.avatar, `user`.e_mail, `user`.status, `user`.rank, "+
 			"COALESCE(np.headline,'') AS headline, COALESCE(np.pronouns,'') AS pronouns, "+
 			"COALESCE(np.timezone,'') AS timezone, "+
 			"COALESCE(np.open_to_mentoring,FALSE) AS open_to_mentoring, "+

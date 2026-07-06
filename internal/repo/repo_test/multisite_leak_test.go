@@ -43,63 +43,61 @@ func siteCtx(siteID string) context.Context {
 	return context.WithValue(context.Background(), constant.SiteIDContextKey, siteID)
 }
 
-// Test_configRepo_SiteUpdateDoesNotMutateGlobal verifies that UpdateConfig
-// from a site context never touches the global default row. Pre-fix
-// behavior fell through to update the global row when no override existed.
-func Test_configRepo_SiteUpdateDoesNotMutateGlobal(t *testing.T) {
+// Test_configRepo_ConfigIsGlobal verifies the decided model: functional
+// config is org-global. An update from ANY context (site or not) edits the
+// one global row, and every site reads the same value. Per-site overrides
+// are presentation-only and live in site_info, never in config — a config
+// override would fork the auto-increment ID that activity rows store as
+// activity_type, orphaning history.
+func Test_configRepo_ConfigIsGlobal(t *testing.T) {
 	repo := config.NewConfigRepo(testDataSource)
 	db := testDataSource.DB
 
-	// Seed a global config row directly.
-	key := "test_leak_update_global"
-	globalValue := "global-original"
-	_, err := db.Insert(&entity.Config{Key: key, Value: globalValue, SiteID: ""})
+	key := "test_config_is_global"
+	_, err := db.Insert(&entity.Config{Key: key, Value: "before", SiteID: ""})
 	require.NoError(t, err)
 
-	// Site A updates the key — should create an override, not touch global.
-	err = repo.UpdateConfig(siteCtx(siteA), key, "site-a-value")
+	// An update under a site context edits the global row (config writes
+	// are admin-only and the admin is network-global).
+	err = repo.UpdateConfig(siteCtx(siteA), key, "after")
 	require.NoError(t, err)
 
-	// Global row unchanged.
 	globalRow := &entity.Config{}
 	exist, err := db.Where("`key` = ? AND site_id = ''", key).Get(globalRow)
 	require.NoError(t, err)
-	require.True(t, exist, "global row must still exist")
-	assert.Equal(t, globalValue, globalRow.Value, "site update must not mutate global row")
+	require.True(t, exist)
+	assert.Equal(t, "after", globalRow.Value, "update must edit the global row")
 
-	// Site A override exists with new value.
-	siteRow := &entity.Config{}
-	exist, err = db.Where("`key` = ? AND site_id = ?", key, siteA).Get(siteRow)
+	// No per-site override row is ever created.
+	var n int64
+	n, err = db.Where("`key` = ? AND site_id != ''", key).Count(&entity.Config{})
 	require.NoError(t, err)
-	require.True(t, exist, "site override row must have been inserted")
-	assert.Equal(t, "site-a-value", siteRow.Value)
-}
+	assert.EqualValues(t, 0, n, "config must never grow per-site override rows")
 
-// Test_configRepo_SiteUpdateDoesNotLeakToOtherSite verifies that updating a
-// config in Site A does not change what Site B reads (Site B continues to
-// see the global default).
-func Test_configRepo_SiteUpdateDoesNotLeakToOtherSite(t *testing.T) {
-	repo := config.NewConfigRepo(testDataSource)
-	db := testDataSource.DB
-
-	key := "test_leak_cross_site"
-	_, err := db.Insert(&entity.Config{Key: key, Value: "global-default", SiteID: ""})
-	require.NoError(t, err)
-
-	err = repo.UpdateConfig(siteCtx(siteA), key, "site-a-override")
-	require.NoError(t, err)
-
-	// Site B should still see the global default — bypass cache by clearing it.
+	// Every site reads the same global value.
 	clearConfigCache(t, key, siteB)
 	got, err := repo.GetConfigByKey(siteCtx(siteB), key)
 	require.NoError(t, err)
-	assert.Equal(t, "global-default", got.Value, "site B must not see site A's override")
+	assert.Equal(t, "after", got.Value)
+}
 
-	// And Site A sees its own override.
-	clearConfigCache(t, key, siteA)
-	gotA, err := repo.GetConfigByKey(siteCtx(siteA), key)
+// Test_configRepo_StrayOverrideRowIgnored verifies that a leftover per-site
+// config row (from the retired override model on live databases) is never
+// served: reads resolve the global row only.
+func Test_configRepo_StrayOverrideRowIgnored(t *testing.T) {
+	repo := config.NewConfigRepo(testDataSource)
+	db := testDataSource.DB
+
+	key := "test_config_stray_override"
+	_, err := db.Insert(&entity.Config{Key: key, Value: "global", SiteID: ""})
 	require.NoError(t, err)
-	assert.Equal(t, "site-a-override", gotA.Value)
+	_, err = db.Insert(&entity.Config{Key: key, Value: "stray", SiteID: siteA})
+	require.NoError(t, err)
+
+	clearConfigCache(t, key, siteA)
+	got, err := repo.GetConfigByKey(siteCtx(siteA), key)
+	require.NoError(t, err)
+	assert.Equal(t, "global", got.Value, "stray override rows must be ignored")
 }
 
 // Test_configRepo_GlobalUpdateInNoSiteContext verifies updates made without
@@ -217,15 +215,11 @@ func Test_pluginConfigRepo_AlwaysWritesGlobal(t *testing.T) {
 	}
 }
 
-// clearConfigCache wipes the per-key config cache entries for a site so that
-// a subsequent read hits the DB. Without this, a stale cache from an earlier
-// step inside the same test pollutes the assertion.
-func clearConfigCache(t *testing.T, key, siteID string) {
+// clearConfigCache wipes the config cache entry for a key so a subsequent
+// read hits the DB. Config is global, so there is one cache key per config
+// key regardless of site; the siteID parameter is kept for call-site clarity.
+func clearConfigCache(t *testing.T, key, _ string) {
 	t.Helper()
-	prefix := ""
-	if siteID != "" {
-		prefix = siteID + ":"
-	}
-	cacheKey := "answer:config:key:" + prefix + key
+	cacheKey := "answer:config:key:" + key
 	_ = testDataSource.Cache.Del(context.Background(), cacheKey)
 }
