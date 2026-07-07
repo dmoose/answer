@@ -196,6 +196,9 @@ backend:
     lang:
       not_found:
         other: Language file not found.
+    site:
+      not_found:
+        other: Site not found.
     object:
       captcha_verification_failed:
         other: Captcha wrong.
@@ -850,7 +853,7 @@ ui:
     install: Answer Installation
     upgrade: Answer Upgrade
     maintenance: Website Maintenance
-    users: Users
+    users: Active Users
     oauth_callback: Processing
     http_404: HTTP Error 404
     http_50X: HTTP Error 500
@@ -1206,7 +1209,8 @@ ui:
     nav:
       question: Questions
       tag: Tags
-      user: Users
+      user: Active Users
+      members: Members
       badges: Badges
       profile: Profile
       setting: Settings
@@ -1217,6 +1221,13 @@ ui:
       moderation: Moderation
     search:
       placeholder: Search
+    site_switcher:
+      select_site: Select site
+      header: Sites
+    app_switcher:
+      label: Apps
+      header: Apps
+      open_new: Open in new tab
   footer:
     build_on: Powered by <1> Apache Answer </1>
   upload_img:
@@ -1404,6 +1415,60 @@ ui:
       modal_content: Are you sure you want to remove this login from your account?
       modal_confirm_btn: Remove
       remove_success: Removed successfully
+    network:
+      page_title: Network profile
+      page_desc: These fields show up on the network member directory and on your profile page. Members search and filter by these. Leave them blank if you'd rather not appear in those facets.
+      loading: Loading...
+      headline_label: Headline
+      headline_placeholder: Short one-liner about what you do or what you're into
+      pronouns_label: Pronouns
+      pronouns_placeholder: she/her, he/him, they/them, ...
+      timezone_label: Timezone
+      open_to_label: Open to
+      open_mentoring: Mentoring
+      open_collaboration: Collaboration
+      open_hire: Hire / for-hire
+      skills_interests_label: Skills & Interests
+      no_tags: No tags defined yet. An admin can curate skill and interest tags under the network admin tools.
+      selected: "{{count}} selected"
+      links_label: External links
+      add_link: Add link
+      user_claimed: user-claimed
+      links_help: These show on your profile as labelled links. Not verified by the network. For routing notifications (Zulip, Discord, etc.) the network resolves your identity through the SSO directory, not from this list.
+      no_links: No links yet.
+      link_label_placeholder: Label (e.g. GitHub)
+      remove_link: Remove link
+      saving: Saving...
+      save_success: Network profile saved
+      save_failed: Failed to save
+    projects:
+      page_title: Projects
+      page_desc: What you're working on, paused on, or open-sourcing. Shown on your profile and on the directory's recently-updated feed.
+      add_project: Add project
+      loading: Loading...
+      empty: No projects yet. Add one to show up in the directory feed.
+      status_active: Active
+      status_paused: Paused
+      status_archived: Archived
+      status_unknown: Unknown
+      seeking_help: Seeking collaborators
+      edit_title: Edit project
+      add_title: Add project
+      form:
+        title: Title
+        description: Description
+        repo_url: Repository / link
+        status: Status
+        seeking_help: Seeking collaborators / reviewers
+      add: Add
+      saving: Saving...
+      update_success: Project updated
+      add_success: Project added
+      save_failed: Failed to save
+      delete_title: Delete project
+      delete_confirm: Are you sure you want to delete "{{title}}"? This cannot be undone.
+      delete_success: Project deleted
+      delete_failed: Failed to delete project
   toast:
     update: update success
     update_password: Password changed successfully.
@@ -1675,6 +1740,47 @@ ui:
     x_answers: answers
     x_questions: questions
     recent_badges: Recent Badges
+  members:
+    page_title: Members
+    page_desc: Browse the network. Search by name, filter by skill or interest, and surface who's open to collaborating, mentoring, or hiring.
+    search_placeholder: Search by name or headline
+    search_btn: Search
+    sort_label: "Sort:"
+    sort_reputation: Reputation
+    sort_newest: Newest members
+    sort_active: Most recently active
+    loading: Loading...
+    empty: No members match these filters.
+    rep: "{{count}} rep"
+    badge_mentoring: Mentoring
+    badge_collab: Collab
+    badge_hire: Hire
+    open_to: Open to
+    clear: Clear
+    filter_mentoring: Mentoring
+    filter_collaboration: Collaboration
+    filter_hire: Hire
+    tags: Tags
+    no_tags: No tags defined yet.
+    clear_all: Clear all filters
+    matches_one: "{{count}} match"
+    matches_other: "{{count}} matches"
+    tags_count_one: "{{count}} tag"
+    tags_count_other: "{{count}} tags"
+    remove_tag: Remove {{name}}
+  network_profile:
+    status_active: Active
+    status_paused: Paused
+    status_archived: Archived
+    status_unknown: Unknown
+    seeking_help: Seeking collaborators
+    open_mentoring: Open to mentoring
+    open_collaboration: Open to collaboration
+    open_hire: Open to hire
+    skills_interests: Skills & Interests
+    projects: Projects
+    links: Links
+    unverified: User-claimed. Not verified.
   install:
     title: Installation
     next: Next
@@ -2398,6 +2504,66 @@ ui:
       app_move_up: Move up
       app_move_down: Move down
       app_remove: Remove
+    site_target:
+      label: Editing site
+      global_option: Global default (all sites)
+      help: Choose which sub-site these settings apply to. The global default is inherited by sites without an override.
+    sites:
+      page_title: Sites
+      page_desc: Manage the sites in your network. Each site is an independent Q&A community with its own content, tags, and reputation.
+      add_site: Add site
+      name_label: Name
+      slug_label: Slug
+      description_label: Description
+      status_label: Status
+      actions_label: Actions
+      status_active: Active
+      status_suspended: Suspended
+      assign_role: Assign role
+      empty: No sites found
+      edit_title: Edit site
+      add_title: Add site
+      name_placeholder: Go Community
+      slug_placeholder: golang
+      slug_help: "Used in URLs: /s/{slug}"
+      role_title: "Assign role: {{name}}"
+      user_id_label: User ID
+      role_label: Role
+      role_user: User
+      role_admin: Admin
+      role_moderator: Moderator
+      assign: Assign
+      update_success: Site updated
+      create_success: Site created
+      save_failed: Failed to save site
+      role_success: Role assigned
+      role_failed: Failed to assign role
+    network_tags:
+      page_title: Profile tags
+      page_desc: Curate the skill and interest tags members can attach to their directory profile. "Both" tags appear in either picker. Inactive tags stay attached to members who already have them but won't appear in pickers or facets.
+      add_tag: Add tag
+      name_label: Name
+      slug_label: Slug
+      kind_label: Kind
+      description_label: Description
+      status_label: Status
+      actions_label: Actions
+      kind_skill: Skill
+      kind_interest: Interest
+      kind_both: Both
+      status_active: Active
+      status_inactive: Inactive
+      unknown: Unknown
+      empty: No tags yet. Add one to start populating the directory facets.
+      edit_title: Edit tag
+      add_title: Add tag
+      name_placeholder: Rust
+      slug_placeholder: rust
+      slug_help: URL-safe identifier used in member-profile URLs and the directory facets.
+      saving: Saving...
+      update_success: Tag updated
+      create_success: Tag created
+      save_failed: Failed to save
   form:
     optional: (optional)
     empty: cannot be empty
@@ -2464,7 +2630,7 @@ ui:
     comment: Comment
     no_data: "We couldn't find anything."
   users:
-    title: Users
+    title: Active Users
     users_with_the_most_reputation: Users with the highest reputation scores this week
     users_with_the_most_vote: Users who voted the most this week
     staffs: Our community staff

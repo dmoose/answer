@@ -22,16 +22,24 @@ import { useTranslation } from 'react-i18next';
 
 import type * as Type from '@/common/interface';
 import { getPageCustom, putPageCustom } from '@/services';
-import { SchemaForm, JSONSchema, initFormData, UISchema } from '@/components';
+import {
+  SchemaForm,
+  JSONSchema,
+  initFormData,
+  UISchema,
+  AdminSiteTargetPicker,
+} from '@/components';
 import { useToast } from '@/hooks';
 import { handleFormError, scrollToElementTop } from '@/utils';
 import { customizeStore } from '@/stores';
+import currentSiteStore from '@/stores/currentSite';
 
 const Index: FC = () => {
   const { t } = useTranslation('translation', {
     keyPrefix: 'admin.css_and_html',
   });
   const Toast = useToast();
+  const [siteId, setSiteId] = useState('');
   const schema: JSONSchema = {
     title: t('page_title'),
     properties: {
@@ -112,13 +120,19 @@ const Index: FC = () => {
       custom_footer: formData.custom_footer.value,
     };
 
-    putPageCustom(reqParams)
+    putPageCustom(reqParams, siteId)
       .then(() => {
         Toast.onShow({
           msg: t('update', { keyPrefix: 'toast' }),
           variant: 'success',
         });
-        customizeStore.getState().update(reqParams);
+        // Only refresh the locally applied customization when the edit
+        // targets the global default or the site currently being viewed;
+        // edits to another site's presentation should not restyle this one.
+        const currentSiteId = currentSiteStore.getState().currentSite?.id;
+        if (siteId === '' || siteId === currentSiteId) {
+          customizeStore.getState().update(reqParams);
+        }
       })
       .catch((err) => {
         if (err.isError) {
@@ -131,7 +145,7 @@ const Index: FC = () => {
   };
 
   useEffect(() => {
-    getPageCustom().then((setting) => {
+    getPageCustom(siteId).then((setting) => {
       if (setting) {
         const formMeta = { ...formData };
         formMeta.custom_css.value = setting.custom_css;
@@ -142,7 +156,7 @@ const Index: FC = () => {
         setFormData(formMeta);
       }
     });
-  }, []);
+  }, [siteId]);
 
   const handleOnChange = (data) => {
     setFormData(data);
@@ -152,6 +166,7 @@ const Index: FC = () => {
     <>
       <h3 className="mb-4">{t('customize', { keyPrefix: 'nav_menus' })}</h3>
       <div className="max-w-748">
+        <AdminSiteTargetPicker value={siteId} onChange={setSiteId} />
         <SchemaForm
           schema={schema}
           formData={formData}

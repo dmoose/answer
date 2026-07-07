@@ -20,7 +20,13 @@
 import { FC, memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { JSONSchema, SchemaForm, UISchema, ImgViewer } from '@/components';
+import {
+  JSONSchema,
+  SchemaForm,
+  UISchema,
+  ImgViewer,
+  AdminSiteTargetPicker,
+} from '@/components';
 import { FormDataType } from '@/common/interface';
 import { brandSetting, getBrandSetting } from '@/services';
 import { brandingStore } from '@/stores';
@@ -35,6 +41,7 @@ const Index: FC = () => {
   const { branding: brandingInfo, update } = brandingStore();
   const Toast = useToast();
 
+  const [siteId, setSiteId] = useState('');
   const [formData, setFormData] = useState<FormDataType>({
     logo: {
       value: brandingInfo.logo,
@@ -133,7 +140,7 @@ const Index: FC = () => {
       square_icon: formData.square_icon.value,
       favicon: formData.favicon.value,
     };
-    brandSetting(params)
+    brandSetting(params, siteId)
       .then(() => {
         update(params);
         Toast.onShow({
@@ -152,7 +159,7 @@ const Index: FC = () => {
   };
 
   const getBrandData = async () => {
-    const res = await getBrandSetting();
+    const res = await getBrandSetting(siteId);
     if (res) {
       formData.logo.value = res.logo;
       formData.mobile_logo.value = res.mobile_logo;
@@ -164,12 +171,13 @@ const Index: FC = () => {
 
   useEffect(() => {
     getBrandData();
-  }, []);
+  }, [siteId]);
 
   return (
     <ImgViewer>
       <h3 className="mb-4">{t('page_title')}</h3>
       <div className="max-w-748">
+        <AdminSiteTargetPicker value={siteId} onChange={setSiteId} />
         <SchemaForm
           schema={schema}
           uiSchema={uiSchema}

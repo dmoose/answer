@@ -19,6 +19,7 @@
 
 import { FC } from 'react';
 import { Dropdown } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
 import { Icon } from '@/components';
 import currentSiteStore from '@/stores/currentSite';
@@ -27,6 +28,9 @@ import './index.scss';
 
 // Site picker block at the top of the left nav. Hidden when only one site.
 const SiteContextPicker: FC = () => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'header.site_switcher',
+  });
   const { currentSite, sites } = currentSiteStore();
 
   if (sites.length <= 1) {
@@ -62,14 +66,14 @@ const SiteContextPicker: FC = () => {
             />
           )}
           <span className="fw-semibold text-truncate">
-            {currentSite?.name ?? 'Select site'}
+            {currentSite?.name ?? t('select_site')}
           </span>
         </span>
         <Icon name="chevron-expand" className="ms-2 small text-secondary" />
       </Dropdown.Toggle>
       <Dropdown.Menu className="site-context-menu">
         <Dropdown.Header className="text-uppercase small text-secondary">
-          Sites
+          {t('header')}
         </Dropdown.Header>
         {sites.map((site) => (
           <Dropdown.Item

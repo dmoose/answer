@@ -19,6 +19,7 @@
 
 import { FC, useEffect, useState } from 'react';
 import { Form, Button, Badge } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 
 import { useToast } from '@/hooks';
@@ -44,6 +45,9 @@ const makeLinkKey = () => {
 };
 
 const NetworkSettings: FC = () => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'settings.network',
+  });
   const Toast = useToast();
   const user = loggedUserInfoStore((s) => s.user);
   const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
@@ -75,7 +79,7 @@ const NetworkSettings: FC = () => {
         setLinks(
           (p.external_links || []).map((l) => ({ ...l, key: makeLinkKey() })),
         );
-        setSelectedTagIds((p.tags || []).map((t) => t.id));
+        setSelectedTagIds((p.tags || []).map((tag) => tag.id));
       })
       .catch(() => {
         // first-time users have no row; defaults are fine
@@ -121,12 +125,12 @@ const NetworkSettings: FC = () => {
         external_links: cleanLinks,
       });
       await setMyTags(selectedTagIds);
-      Toast.onShow({ msg: 'Network profile saved', variant: 'success' });
+      Toast.onShow({ msg: t('save_success'), variant: 'success' });
     } catch (e: unknown) {
       const msg =
         typeof e === 'object' && e && 'msg' in e
           ? String((e as { msg: unknown }).msg)
-          : 'Failed to save';
+          : t('save_failed');
       Toast.onShow({ msg, variant: 'danger' });
     } finally {
       setSaving(false);
@@ -137,17 +141,13 @@ const NetworkSettings: FC = () => {
     return <Navigate to="/users/settings/profile" replace />;
   }
   if (loading) {
-    return <div className="text-secondary">Loading…</div>;
+    return <div className="text-secondary">{t('loading')}</div>;
   }
 
   return (
     <>
-      <h3 className="mb-4">Network profile</h3>
-      <p className="text-secondary mb-4">
-        These fields show up on the network member directory and on your profile
-        page. Members search and filter by these — leave them blank if
-        you&apos;d rather not appear in those facets.
-      </p>
+      <h3 className="mb-4">{t('page_title')}</h3>
+      <p className="text-secondary mb-4">{t('page_desc')}</p>
 
       <Form
         onSubmit={(e) => {
@@ -155,29 +155,29 @@ const NetworkSettings: FC = () => {
           save();
         }}>
         <Form.Group className="mb-3">
-          <Form.Label>Headline</Form.Label>
+          <Form.Label>{t('headline_label')}</Form.Label>
           <Form.Control
             type="text"
             value={headline}
             maxLength={255}
             onChange={(e) => setHeadline(e.target.value)}
-            placeholder="Short one-liner about what you do or what you're into"
+            placeholder={t('headline_placeholder')}
           />
         </Form.Group>
 
         <div className="d-flex gap-3 mb-3">
           <Form.Group className="flex-grow-1">
-            <Form.Label>Pronouns</Form.Label>
+            <Form.Label>{t('pronouns_label')}</Form.Label>
             <Form.Control
               type="text"
               value={pronouns}
               maxLength={64}
               onChange={(e) => setPronouns(e.target.value)}
-              placeholder="she/her, he/him, they/them, …"
+              placeholder={t('pronouns_placeholder')}
             />
           </Form.Group>
           <Form.Group className="flex-grow-1">
-            <Form.Label>Timezone</Form.Label>
+            <Form.Label>{t('timezone_label')}</Form.Label>
             <Form.Control
               type="text"
               value={timezone}
@@ -189,50 +189,47 @@ const NetworkSettings: FC = () => {
         </div>
 
         <Form.Group className="mb-4">
-          <Form.Label>Open to</Form.Label>
+          <Form.Label>{t('open_to_label')}</Form.Label>
           <Form.Check
             type="checkbox"
             id="open-mentoring"
-            label="Mentoring"
+            label={t('open_mentoring')}
             checked={openMentoring}
             onChange={(e) => setOpenMentoring(e.target.checked)}
           />
           <Form.Check
             type="checkbox"
             id="open-collab"
-            label="Collaboration"
+            label={t('open_collaboration')}
             checked={openCollab}
             onChange={(e) => setOpenCollab(e.target.checked)}
           />
           <Form.Check
             type="checkbox"
             id="open-hire"
-            label="Hire / for-hire"
+            label={t('open_hire')}
             checked={openHire}
             onChange={(e) => setOpenHire(e.target.checked)}
           />
         </Form.Group>
 
         <Form.Group className="mb-4">
-          <Form.Label>Skills &amp; Interests</Form.Label>
+          <Form.Label>{t('skills_interests_label')}</Form.Label>
           {!catalog || catalog.length === 0 ? (
-            <div className="text-secondary small">
-              No tags defined yet. An admin can curate skill / interest tags
-              under the network admin tools.
-            </div>
+            <div className="text-secondary small">{t('no_tags')}</div>
           ) : (
             <div className="d-flex flex-wrap gap-1">
-              {catalog.map((t) => {
-                const on = selectedTagIds.includes(t.id);
+              {catalog.map((tag) => {
+                const on = selectedTagIds.includes(tag.id);
                 return (
                   <button
-                    key={t.id}
+                    key={tag.id}
                     type="button"
                     className={`btn btn-sm ${
                       on ? 'btn-primary' : 'btn-outline-secondary'
                     }`}
-                    onClick={() => toggleTag(t.id)}>
-                    {t.name}
+                    onClick={() => toggleTag(tag.id)}>
+                    {tag.name}
                   </button>
                 );
               })}
@@ -240,39 +237,36 @@ const NetworkSettings: FC = () => {
           )}
           {selectedTagIds.length > 0 && (
             <div className="text-secondary small mt-2">
-              {selectedTagIds.length} selected
+              {t('selected', { count: selectedTagIds.length })}
             </div>
           )}
         </Form.Group>
 
         <Form.Group className="mb-4">
           <Form.Label className="d-flex justify-content-between align-items-center">
-            <span>External links</span>
+            <span>{t('links_label')}</span>
             <Button
               variant="outline-secondary"
               size="sm"
               onClick={() => addLink()}
               disabled={links.length >= MAX_LINKS}>
-              Add link
+              {t('add_link')}
             </Button>
           </Form.Label>
           <div className="border rounded p-3 small mb-3 bg-body-tertiary text-body">
             <Badge bg="secondary" className="me-2">
-              user-claimed
+              {t('user_claimed')}
             </Badge>
-            These show on your profile as labelled links. Not verified by the
-            network. For routing notifications (Zulip, Discord, etc.) the
-            network resolves your identity through the SSO directory, not from
-            this list.
+            {t('links_help')}
           </div>
           {links.length === 0 ? (
-            <div className="text-secondary small">No links yet.</div>
+            <div className="text-secondary small">{t('no_links')}</div>
           ) : (
             links.map((l, i) => (
               <div key={l.key} className="d-flex gap-2 mb-2">
                 <Form.Control
                   type="text"
-                  placeholder="Label (e.g. GitHub)"
+                  placeholder={t('link_label_placeholder')}
                   value={l.label}
                   maxLength={64}
                   onChange={(e) => updateLink(i, 'label', e.target.value)}
@@ -287,7 +281,7 @@ const NetworkSettings: FC = () => {
                 <Button
                   variant="outline-danger"
                   onClick={() => removeLink(i)}
-                  aria-label="Remove link">
+                  aria-label={t('remove_link')}>
                   ×
                 </Button>
               </div>
@@ -296,7 +290,7 @@ const NetworkSettings: FC = () => {
         </Form.Group>
 
         <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('saving') : t('save', { keyPrefix: 'btns' })}
         </Button>
       </Form>
     </>

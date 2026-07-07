@@ -20,7 +20,13 @@
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { SchemaForm, JSONSchema, initFormData, UISchema } from '@/components';
+import {
+  SchemaForm,
+  JSONSchema,
+  initFormData,
+  UISchema,
+  AdminSiteTargetPicker,
+} from '@/components';
 import type * as Type from '@/common/interface';
 import { useToast } from '@/hooks';
 import { siteInfoStore } from '@/stores';
@@ -36,7 +42,8 @@ const General: FC = () => {
   const Toast = useToast();
   const updateSiteInfo = siteInfoStore((state) => state.update);
 
-  const { data: setting } = useGeneralSetting();
+  const [siteId, setSiteId] = useState('');
+  const { data: setting } = useGeneralSetting(siteId);
   const schema: JSONSchema = {
     title: t('page_title'),
     required: ['name', 'site_url', 'contact_email'],
@@ -125,7 +132,7 @@ const General: FC = () => {
       contact_email: formData.contact_email.value,
     };
 
-    updateGeneralSetting(reqParams)
+    updateGeneralSetting(reqParams, siteId)
       .then((res) => {
         Toast.onShow({
           msg: t('update', { keyPrefix: 'toast' }),
@@ -171,6 +178,7 @@ const General: FC = () => {
     <>
       <h3 className="mb-4">{t('page_title')}</h3>
       <div className="max-w-748">
+        <AdminSiteTargetPicker value={siteId} onChange={setSiteId} />
         <SchemaForm
           schema={schema}
           formData={formData}

@@ -19,10 +19,14 @@
 
 import { FC } from 'react';
 import { Dropdown } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
 import currentSiteStore from '@/stores/currentSite';
 
 const SiteSwitcher: FC = () => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'header.site_switcher',
+  });
   const { currentSite, sites } = currentSiteStore();
 
   if (sites.length <= 1) {
@@ -43,7 +47,7 @@ const SiteSwitcher: FC = () => {
         variant="link"
         className="nav-link text-capitalize text-nowrap p-0"
         id="site-switcher">
-        {currentSite?.name || 'Select Site'}
+        {currentSite?.name || t('select_site')}
       </Dropdown.Toggle>
       <Dropdown.Menu align="end">
         {sites.map((site) => (

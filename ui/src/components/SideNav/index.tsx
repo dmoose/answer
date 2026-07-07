@@ -84,7 +84,7 @@ const Index: FC = () => {
       {directoryEnabled && (
         <NavLink to="/members" className="nav-link">
           <Icon name="person-vcard-fill" className="me-2" />
-          <span>Members</span>
+          <span>{t('header.nav.members')}</span>
         </NavLink>
       )}
 

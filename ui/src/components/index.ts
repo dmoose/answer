@@ -68,6 +68,7 @@ import BubbleAi from './BubbleAi';
 import BubbleUser from './BubbleUser';
 import Sender from './Sender';
 import TabNav from './TabNav';
+import AdminSiteTargetPicker from './AdminSiteTargetPicker';
 
 export {
   Avatar,
@@ -123,5 +124,6 @@ export {
   BubbleUser,
   Sender,
   TabNav,
+  AdminSiteTargetPicker,
 };
 export type { EditorRef, JSONSchema, UISchema };

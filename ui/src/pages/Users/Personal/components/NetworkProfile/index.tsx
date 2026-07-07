@@ -19,14 +19,15 @@
 
 import { FC, useEffect, useState } from 'react';
 import { Card, Badge } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
 import { getNetworkProfile, type NetworkProfile } from '@/services';
 import { featuresControlStore } from '@/stores';
 
-const STATUS_LABEL: Record<number, string> = {
-  1: 'Active',
-  2: 'Paused',
-  9: 'Archived',
+const STATUS_KEY: Record<number, string> = {
+  1: 'status_active',
+  2: 'status_paused',
+  9: 'status_archived',
 };
 
 // hasContent returns true when the profile has at least one non-default field
@@ -52,6 +53,9 @@ interface Props {
 }
 
 const NetworkProfileSection: FC<Props> = ({ userId }) => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'network_profile',
+  });
   const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const [profile, setProfile] = useState<NetworkProfile | null>(null);
 
@@ -95,12 +99,14 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
             profile.open_to_hire) && (
             <div className="d-flex flex-wrap gap-1">
               {profile.open_to_mentoring && (
-                <Badge bg="success">Open to mentoring</Badge>
+                <Badge bg="success">{t('open_mentoring')}</Badge>
               )}
               {profile.open_to_collaboration && (
-                <Badge bg="info">Open to collaboration</Badge>
+                <Badge bg="info">{t('open_collaboration')}</Badge>
               )}
-              {profile.open_to_hire && <Badge bg="warning">Open to hire</Badge>}
+              {profile.open_to_hire && (
+                <Badge bg="warning">{t('open_hire')}</Badge>
+              )}
             </div>
           )}
         </section>
@@ -108,15 +114,15 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
 
       {profile.tags && profile.tags.length > 0 && (
         <section className="mb-4">
-          <h6 className="mb-2">Skills &amp; Interests</h6>
+          <h6 className="mb-2">{t('skills_interests')}</h6>
           <div className="d-flex flex-wrap gap-1">
-            {profile.tags.map((t) => (
+            {profile.tags.map((tag) => (
               <Badge
-                key={t.id}
+                key={tag.id}
                 bg="body-tertiary"
                 text="body"
                 className="border">
-                {t.name}
+                {tag.name}
               </Badge>
             ))}
           </div>
@@ -125,7 +131,7 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
 
       {profile.projects && profile.projects.length > 0 && (
         <section className="mb-4">
-          <h6 className="mb-2">Projects</h6>
+          <h6 className="mb-2">{t('projects')}</h6>
           {profile.projects.map((p) => (
             <Card key={p.id} className="mb-2">
               <Card.Body>
@@ -136,10 +142,10 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
                       <Badge
                         bg={p.status === 1 ? 'success' : 'secondary'}
                         className="text-uppercase small">
-                        {STATUS_LABEL[p.status] ?? 'Unknown'}
+                        {t(STATUS_KEY[p.status] ?? 'status_unknown')}
                       </Badge>
                       {p.seeking_help && (
-                        <Badge bg="warning">Seeking collaborators</Badge>
+                        <Badge bg="warning">{t('seeking_help')}</Badge>
                       )}
                     </div>
                     {p.description && (
@@ -166,7 +172,7 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
 
       {profile.external_links && profile.external_links.length > 0 && (
         <section className="mb-4">
-          <h6 className="mb-2">Links</h6>
+          <h6 className="mb-2">{t('links')}</h6>
           <div className="d-flex flex-wrap gap-2">
             {profile.external_links.map((l) => (
               <a
@@ -179,9 +185,7 @@ const NetworkProfileSection: FC<Props> = ({ userId }) => {
               </a>
             ))}
           </div>
-          <div className="text-secondary small mt-1">
-            User-claimed — not verified.
-          </div>
+          <div className="text-secondary small mt-1">{t('unverified')}</div>
         </section>
       )}
     </>

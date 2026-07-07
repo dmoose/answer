@@ -19,9 +19,11 @@
 
 import { FC, useEffect, useState } from 'react';
 import { Form, Button, Card, Badge, Modal } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 
 import { useToast } from '@/hooks';
+import { Modal as ConfirmModal } from '@/components';
 import {
   getNetworkProfile,
   createProject,
@@ -32,9 +34,9 @@ import {
 import { loggedUserInfoStore, featuresControlStore } from '@/stores';
 
 const STATUS_OPTS = [
-  { value: 1, label: 'Active' },
-  { value: 2, label: 'Paused' },
-  { value: 9, label: 'Archived' },
+  { value: 1, labelKey: 'status_active' },
+  { value: 2, labelKey: 'status_paused' },
+  { value: 9, labelKey: 'status_archived' },
 ];
 
 interface FormState {
@@ -54,6 +56,9 @@ const empty: FormState = {
 };
 
 const ProjectsSettings: FC = () => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'settings.projects',
+  });
   const Toast = useToast();
   const user = loggedUserInfoStore((s) => s.user);
   const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
@@ -98,10 +103,10 @@ const ProjectsSettings: FC = () => {
     try {
       if (editing) {
         await updateProject(editing.id, form);
-        Toast.onShow({ msg: 'Project updated', variant: 'success' });
+        Toast.onShow({ msg: t('update_success'), variant: 'success' });
       } else {
         await createProject(form);
-        Toast.onShow({ msg: 'Project added', variant: 'success' });
+        Toast.onShow({ msg: t('add_success'), variant: 'success' });
       }
       setShowModal(false);
       reload();
@@ -109,26 +114,34 @@ const ProjectsSettings: FC = () => {
       const msg =
         typeof e === 'object' && e && 'msg' in e
           ? String((e as { msg: unknown }).msg)
-          : 'Failed to save';
+          : t('save_failed');
       Toast.onShow({ msg, variant: 'danger' });
     } finally {
       setSaving(false);
     }
   }
 
-  async function remove(p: ProfileProject) {
-    if (!window.confirm(`Delete project "${p.title}"?`)) return;
-    try {
-      await deleteProject(p.id);
-      Toast.onShow({ msg: 'Project deleted', variant: 'success' });
-      reload();
-    } catch (e: unknown) {
-      const msg =
-        typeof e === 'object' && e && 'msg' in e
-          ? String((e as { msg: unknown }).msg)
-          : 'Failed to delete';
-      Toast.onShow({ msg, variant: 'danger' });
-    }
+  function remove(p: ProfileProject) {
+    ConfirmModal.confirm({
+      title: t('delete_title'),
+      content: t('delete_confirm', { title: p.title }),
+      cancelBtnVariant: 'link',
+      confirmBtnVariant: 'danger',
+      confirmText: t('delete', { keyPrefix: 'btns' }),
+      onConfirm: async () => {
+        try {
+          await deleteProject(p.id);
+          Toast.onShow({ msg: t('delete_success'), variant: 'success' });
+          reload();
+        } catch (e: unknown) {
+          const msg =
+            typeof e === 'object' && e && 'msg' in e
+              ? String((e as { msg: unknown }).msg)
+              : t('delete_failed');
+          Toast.onShow({ msg, variant: 'danger' });
+        }
+      },
+    });
   }
 
   if (!directoryEnabled) {
@@ -138,22 +151,17 @@ const ProjectsSettings: FC = () => {
   return (
     <>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Projects</h3>
+        <h3 className="mb-0">{t('page_title')}</h3>
         <Button variant="primary" onClick={() => openAdd()}>
-          Add project
+          {t('add_project')}
         </Button>
       </div>
-      <p className="text-secondary mb-4">
-        What you&apos;re working on, paused on, or open-sourcing. Shown on your
-        profile and on the directory&apos;s recently-updated feed.
-      </p>
+      <p className="text-secondary mb-4">{t('page_desc')}</p>
 
       {loading ? (
-        <div className="text-secondary">Loading…</div>
+        <div className="text-secondary">{t('loading')}</div>
       ) : projects.length === 0 ? (
-        <div className="text-secondary">
-          No projects yet — add one to show up in the directory feed.
-        </div>
+        <div className="text-secondary">{t('empty')}</div>
       ) : (
         projects.map((p) => (
           <Card key={p.id} className="mb-2">
@@ -163,11 +171,13 @@ const ProjectsSettings: FC = () => {
                   <div className="d-flex flex-wrap gap-2 align-items-center mb-1">
                     <strong>{p.title}</strong>
                     <Badge bg={p.status === 1 ? 'success' : 'secondary'}>
-                      {STATUS_OPTS.find((s) => s.value === p.status)?.label ??
-                        'Unknown'}
+                      {t(
+                        STATUS_OPTS.find((s) => s.value === p.status)
+                          ?.labelKey ?? 'status_unknown',
+                      )}
                     </Badge>
                     {p.seeking_help && (
-                      <Badge bg="warning">Seeking collaborators</Badge>
+                      <Badge bg="warning">{t('seeking_help')}</Badge>
                     )}
                   </div>
                   {p.description && (
@@ -190,13 +200,13 @@ const ProjectsSettings: FC = () => {
                     size="sm"
                     variant="outline-secondary"
                     onClick={() => openEdit(p)}>
-                    Edit
+                    {t('edit', { keyPrefix: 'btns' })}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline-danger"
                     onClick={() => remove(p)}>
-                    Delete
+                    {t('delete', { keyPrefix: 'btns' })}
                   </Button>
                 </div>
               </div>
@@ -207,11 +217,13 @@ const ProjectsSettings: FC = () => {
 
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{editing ? 'Edit project' : 'Add project'}</Modal.Title>
+          <Modal.Title>
+            {editing ? t('edit_title') : t('add_title')}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-3">
-            <Form.Label>Title</Form.Label>
+            <Form.Label>{t('form.title')}</Form.Label>
             <Form.Control
               type="text"
               value={form.title}
@@ -221,7 +233,7 @@ const ProjectsSettings: FC = () => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Description</Form.Label>
+            <Form.Label>{t('form.description')}</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
@@ -233,7 +245,7 @@ const ProjectsSettings: FC = () => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Repository / link</Form.Label>
+            <Form.Label>{t('form.repo_url')}</Form.Label>
             <Form.Control
               type="url"
               value={form.repo_url}
@@ -243,7 +255,7 @@ const ProjectsSettings: FC = () => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Status</Form.Label>
+            <Form.Label>{t('form.status')}</Form.Label>
             <Form.Select
               value={form.status}
               onChange={(e) =>
@@ -251,7 +263,7 @@ const ProjectsSettings: FC = () => {
               }>
               {STATUS_OPTS.map((s) => (
                 <option key={s.value} value={s.value}>
-                  {s.label}
+                  {t(s.labelKey)}
                 </option>
               ))}
             </Form.Select>
@@ -259,7 +271,7 @@ const ProjectsSettings: FC = () => {
           <Form.Check
             type="checkbox"
             id="seeking-help"
-            label="Seeking collaborators / reviewers"
+            label={t('form.seeking_help')}
             checked={form.seeking_help}
             onChange={(e) =>
               setForm({ ...form, seeking_help: e.target.checked })
@@ -271,13 +283,17 @@ const ProjectsSettings: FC = () => {
             variant="secondary"
             onClick={() => setShowModal(false)}
             disabled={saving}>
-            Cancel
+            {t('cancel', { keyPrefix: 'btns' })}
           </Button>
           <Button
             variant="primary"
             onClick={() => save()}
             disabled={saving || !form.title.trim()}>
-            {saving ? 'Saving…' : editing ? 'Save' : 'Add'}
+            {saving
+              ? t('saving')
+              : editing
+                ? t('save', { keyPrefix: 'btns' })
+                : t('add')}
           </Button>
         </Modal.Footer>
       </Modal>

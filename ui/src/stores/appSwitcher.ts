@@ -30,7 +30,6 @@ interface AppSwitcherState {
   enabled: boolean;
   links: AppSwitcherLink[];
   update: (params: { enabled?: boolean; links?: AppSwitcherLink[] }) => void;
-  reset: () => void;
 }
 
 const appSwitcherStore = create<AppSwitcherState>((set) => ({
@@ -42,7 +41,6 @@ const appSwitcherStore = create<AppSwitcherState>((set) => ({
       ...(params.enabled !== undefined && { enabled: params.enabled }),
       ...(params.links !== undefined && { links: params.links }),
     })),
-  reset: () => set({ enabled: false, links: [] }),
 }));
 
 export default appSwitcherStore;

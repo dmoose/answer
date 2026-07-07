@@ -19,6 +19,7 @@
 
 import { FC, useState, useEffect } from 'react';
 import { Table, Button, Form, Modal, Badge } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 
 import { useToast } from '@/hooks';
@@ -31,15 +32,15 @@ import {
 } from '@/services';
 import { featuresControlStore } from '@/stores';
 
-const KIND_LABEL: Record<number, string> = {
-  1: 'Skill',
-  2: 'Interest',
-  3: 'Both',
+const KIND_KEY: Record<number, string> = {
+  1: 'kind_skill',
+  2: 'kind_interest',
+  3: 'kind_both',
 };
 
-const STATUS_LABEL: Record<number, string> = {
-  1: 'Active',
-  9: 'Inactive',
+const STATUS_KEY: Record<number, string> = {
+  1: 'status_active',
+  9: 'status_inactive',
 };
 
 const empty: ProfileTagUpsertParams = {
@@ -62,6 +63,9 @@ function slugify(s: string) {
 }
 
 const NetworkTags: FC = () => {
+  const { t } = useTranslation('translation', {
+    keyPrefix: 'admin.network_tags',
+  });
   const Toast = useToast();
   const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const { data: tags, mutate } = useAdminProfileTags();
@@ -90,14 +94,14 @@ const NetworkTags: FC = () => {
     setShowModal(true);
   }
 
-  function openEdit(t: AdminProfileTag) {
-    setEditing(t);
+  function openEdit(tag: AdminProfileTag) {
+    setEditing(tag);
     setForm({
-      slug: t.slug,
-      name: t.name,
-      kind: t.kind,
-      description: t.description || '',
-      status: t.status,
+      slug: tag.slug,
+      name: tag.name,
+      kind: tag.kind,
+      description: tag.description || '',
+      status: tag.status,
     });
     setSlugTouched(true);
     setShowModal(true);
@@ -108,10 +112,10 @@ const NetworkTags: FC = () => {
     try {
       if (editing) {
         await updateAdminProfileTag(editing.id, form);
-        Toast.onShow({ msg: 'Tag updated', variant: 'success' });
+        Toast.onShow({ msg: t('update_success'), variant: 'success' });
       } else {
         await createAdminProfileTag(form);
-        Toast.onShow({ msg: 'Tag created', variant: 'success' });
+        Toast.onShow({ msg: t('create_success'), variant: 'success' });
       }
       setShowModal(false);
       mutate();
@@ -119,7 +123,7 @@ const NetworkTags: FC = () => {
       const msg =
         typeof e === 'object' && e && 'msg' in e
           ? String((e as { msg: unknown }).msg)
-          : 'Failed to save';
+          : t('save_failed');
       Toast.onShow({ msg, variant: 'danger' });
     } finally {
       setSaving(false);
@@ -128,49 +132,44 @@ const NetworkTags: FC = () => {
 
   return (
     <>
-      <h3 className="mb-4">Profile tags</h3>
-      <p className="text-secondary mb-3">
-        Curate the skill and interest tags members can attach to their directory
-        profile. &ldquo;Both&rdquo; tags appear in either picker. Inactive tags
-        stay attached to members who already have them but won&apos;t appear in
-        pickers or facets.
-      </p>
+      <h3 className="mb-4">{t('page_title')}</h3>
+      <p className="text-secondary mb-3">{t('page_desc')}</p>
       <div className="mb-3">
         <Button variant="primary" size="sm" onClick={() => openAdd()}>
-          Add tag
+          {t('add_tag')}
         </Button>
       </div>
       <Table striped bordered hover size="sm">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Slug</th>
-            <th>Kind</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>{t('name_label')}</th>
+            <th>{t('slug_label')}</th>
+            <th>{t('kind_label')}</th>
+            <th>{t('description_label')}</th>
+            <th>{t('status_label')}</th>
+            <th>{t('actions_label')}</th>
           </tr>
         </thead>
         <tbody>
-          {tags?.map((t) => (
-            <tr key={t.id}>
-              <td>{t.name}</td>
+          {tags?.map((tag) => (
+            <tr key={tag.id}>
+              <td>{tag.name}</td>
               <td>
-                <code>{t.slug}</code>
+                <code>{tag.slug}</code>
               </td>
-              <td>{KIND_LABEL[t.kind] ?? '?'}</td>
-              <td className="text-secondary">{t.description || '—'}</td>
+              <td>{t(KIND_KEY[tag.kind] ?? 'unknown')}</td>
+              <td className="text-secondary">{tag.description || '—'}</td>
               <td>
-                <Badge bg={t.status === 1 ? 'success' : 'secondary'}>
-                  {STATUS_LABEL[t.status] ?? '?'}
+                <Badge bg={tag.status === 1 ? 'success' : 'secondary'}>
+                  {t(STATUS_KEY[tag.status] ?? 'unknown')}
                 </Badge>
               </td>
               <td>
                 <Button
                   variant="outline-secondary"
                   size="sm"
-                  onClick={() => openEdit(t)}>
-                  Edit
+                  onClick={() => openEdit(tag)}>
+                  {t('edit', { keyPrefix: 'btns' })}
                 </Button>
               </td>
             </tr>
@@ -178,7 +177,7 @@ const NetworkTags: FC = () => {
           {tags && tags.length === 0 && (
             <tr>
               <td colSpan={6} className="text-center text-muted">
-                No tags yet. Add one to start populating the directory facets.
+                {t('empty')}
               </td>
             </tr>
           )}
@@ -187,22 +186,24 @@ const NetworkTags: FC = () => {
 
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{editing ? 'Edit tag' : 'Add tag'}</Modal.Title>
+          <Modal.Title>
+            {editing ? t('edit_title') : t('add_title')}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-3">
-            <Form.Label>Name</Form.Label>
+            <Form.Label>{t('name_label')}</Form.Label>
             <Form.Control
               type="text"
               value={form.name}
               maxLength={128}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Rust"
+              placeholder={t('name_placeholder')}
               required
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Slug</Form.Label>
+            <Form.Label>{t('slug_label')}</Form.Label>
             <Form.Control
               type="text"
               value={form.slug}
@@ -212,27 +213,24 @@ const NetworkTags: FC = () => {
                 setForm({ ...form, slug: e.target.value });
                 setSlugTouched(true);
               }}
-              placeholder="rust"
+              placeholder={t('slug_placeholder')}
             />
-            <Form.Text className="text-muted">
-              URL-safe identifier — used in member-profile URLs and the
-              directory facets.
-            </Form.Text>
+            <Form.Text className="text-muted">{t('slug_help')}</Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Kind</Form.Label>
+            <Form.Label>{t('kind_label')}</Form.Label>
             <Form.Select
               value={form.kind}
               onChange={(e) =>
                 setForm({ ...form, kind: Number(e.target.value) })
               }>
-              <option value={1}>Skill</option>
-              <option value={2}>Interest</option>
-              <option value={3}>Both</option>
+              <option value={1}>{t('kind_skill')}</option>
+              <option value={2}>{t('kind_interest')}</option>
+              <option value={3}>{t('kind_both')}</option>
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Description</Form.Label>
+            <Form.Label>{t('description_label')}</Form.Label>
             <Form.Control
               as="textarea"
               rows={2}
@@ -244,14 +242,14 @@ const NetworkTags: FC = () => {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Status</Form.Label>
+            <Form.Label>{t('status_label')}</Form.Label>
             <Form.Select
               value={form.status}
               onChange={(e) =>
                 setForm({ ...form, status: Number(e.target.value) })
               }>
-              <option value={1}>Active</option>
-              <option value={9}>Inactive</option>
+              <option value={1}>{t('status_active')}</option>
+              <option value={9}>{t('status_inactive')}</option>
             </Form.Select>
           </Form.Group>
         </Modal.Body>
@@ -260,13 +258,17 @@ const NetworkTags: FC = () => {
             variant="secondary"
             onClick={() => setShowModal(false)}
             disabled={saving}>
-            Cancel
+            {t('cancel', { keyPrefix: 'btns' })}
           </Button>
           <Button
             variant="primary"
             onClick={() => save()}
             disabled={saving || !form.name.trim() || !form.slug.trim()}>
-            {saving ? 'Saving…' : editing ? 'Save' : 'Create'}
+            {saving
+              ? t('saving')
+              : editing
+                ? t('save', { keyPrefix: 'btns' })
+                : t('create', { keyPrefix: 'btns' })}
           </Button>
         </Modal.Footer>
       </Modal>

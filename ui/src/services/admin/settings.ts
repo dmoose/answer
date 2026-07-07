@@ -54,8 +54,14 @@ export interface AdminSettingsPrivilegeReq {
   }[];
 }
 
-export const useGeneralSetting = () => {
-  const apiUrl = `/answer/admin/api/siteinfo/general`;
+// siteQuery renders the optional per-site presentation target for the
+// siteinfo endpoints: empty means the global default, a sub-site id means
+// that site's override.
+const siteQuery = (siteId?: string) =>
+  siteId ? `?site_id=${encodeURIComponent(siteId)}` : '';
+
+export const useGeneralSetting = (siteId?: string) => {
+  const apiUrl = `/answer/admin/api/siteinfo/general${siteQuery(siteId)}`;
   const { data, error } = useSWR<Type.AdminSettingsGeneral, Error>(
     [apiUrl],
     request.instance.get,
@@ -68,8 +74,11 @@ export const useGeneralSetting = () => {
   };
 };
 
-export const updateGeneralSetting = (params: Type.AdminSettingsGeneral) => {
-  const apiUrl = `/answer/admin/api/siteinfo/general`;
+export const updateGeneralSetting = (
+  params: Type.AdminSettingsGeneral,
+  siteId?: string,
+) => {
+  const apiUrl = `/answer/admin/api/siteinfo/general${siteQuery(siteId)}`;
   return request.put(apiUrl, params);
 };
 
@@ -114,12 +123,18 @@ export const getAdminLanguageOptions = () => {
   return request.get<Type.LangsType[]>(apiUrl);
 };
 
-export const getBrandSetting = () => {
-  return request.get('/answer/admin/api/siteinfo/branding');
+export const getBrandSetting = (siteId?: string) => {
+  return request.get(`/answer/admin/api/siteinfo/branding${siteQuery(siteId)}`);
 };
 
-export const brandSetting = (params: Type.AdminSettingBranding) => {
-  return request.put('/answer/admin/api/siteinfo/branding', params);
+export const brandSetting = (
+  params: Type.AdminSettingBranding,
+  siteId?: string,
+) => {
+  return request.put(
+    `/answer/admin/api/siteinfo/branding${siteQuery(siteId)}`,
+    params,
+  );
 };
 
 export const getAdminFilesSetting = () => {
@@ -148,14 +163,20 @@ export const putThemeSetting = (params: Type.AdminSettingsTheme) => {
   return request.put('/answer/admin/api/siteinfo/theme', params);
 };
 
-export const getPageCustom = () => {
+export const getPageCustom = (siteId?: string) => {
   return request.get<Type.AdminSettingsCustom>(
-    '/answer/admin/api/siteinfo/custom-css-html',
+    `/answer/admin/api/siteinfo/custom-css-html${siteQuery(siteId)}`,
   );
 };
 
-export const putPageCustom = (params: Type.AdminSettingsCustom) => {
-  return request.put('/answer/admin/api/siteinfo/custom-css-html', params);
+export const putPageCustom = (
+  params: Type.AdminSettingsCustom,
+  siteId?: string,
+) => {
+  return request.put(
+    `/answer/admin/api/siteinfo/custom-css-html${siteQuery(siteId)}`,
+    params,
+  );
 };
 
 export const getLoginSetting = () => {

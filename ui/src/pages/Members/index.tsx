@@ -27,6 +27,7 @@ import {
   Badge,
   Button,
 } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import { Avatar, Pagination, Empty } from '@/components';
@@ -40,11 +41,11 @@ import { featuresControlStore } from '@/stores';
 
 const SORT_OPTIONS: Array<{
   value: NonNullable<DirectorySearchParams['sort']>;
-  label: string;
+  labelKey: string;
 }> = [
-  { value: 'rep_desc', label: 'Reputation' },
-  { value: 'newest', label: 'Newest members' },
-  { value: 'active', label: 'Most recently active' },
+  { value: 'rep_desc', labelKey: 'sort_reputation' },
+  { value: 'newest', labelKey: 'sort_newest' },
+  { value: 'active', labelKey: 'sort_active' },
 ];
 
 const PAGE_SIZE = 20;
@@ -60,6 +61,7 @@ function readArrayParam(params: URLSearchParams, key: string): string[] {
 }
 
 const Members: FC = () => {
+  const { t } = useTranslation('translation', { keyPrefix: 'members' });
   const directoryEnabled = featuresControlStore((s) => s.directory_enabled);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -81,8 +83,8 @@ const Members: FC = () => {
   const { data: catalog } = useProfileTags();
   const tagById = useMemo(() => {
     const m: Record<string, ProfileTag> = {};
-    catalog?.forEach((t) => {
-      m[t.id] = t;
+    catalog?.forEach((tag) => {
+      m[tag.id] = tag;
     });
     return m;
   }, [catalog]);
@@ -136,43 +138,40 @@ const Members: FC = () => {
   return (
     <Row className="py-4 mb-4">
       <Col xxl={9} lg={8}>
-        <h3 className="mb-3">Members</h3>
-        <p className="text-secondary mb-3">
-          Browse the network — search by name, filter by skill or interest,
-          surface who&apos;s open to collaborating, mentoring, or hiring.
-        </p>
+        <h3 className="mb-3">{t('page_title')}</h3>
+        <p className="text-secondary mb-3">{t('page_desc')}</p>
 
         <Form onSubmit={submitSearch} className="mb-3">
           <InputGroup>
             <Form.Control
               type="search"
-              placeholder="Search by name or headline"
+              placeholder={t('search_placeholder')}
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
             />
             <Button type="submit" variant="outline-secondary">
-              Search
+              {t('search_btn')}
             </Button>
           </InputGroup>
         </Form>
 
         <div className="mb-3 d-flex flex-wrap gap-2 align-items-center">
-          <span className="text-secondary small">Sort:</span>
+          <span className="text-secondary small">{t('sort_label')}</span>
           {SORT_OPTIONS.map((opt) => (
             <Button
               key={opt.value}
               size="sm"
               variant={sort === opt.value ? 'primary' : 'outline-secondary'}
               onClick={() => patch({ sort: opt.value })}>
-              {opt.label}
+              {t(opt.labelKey)}
             </Button>
           ))}
         </div>
 
         {isLoading ? (
-          <div className="text-secondary">Loading…</div>
+          <div className="text-secondary">{t('loading')}</div>
         ) : members.length === 0 ? (
-          <Empty>No members match these filters.</Empty>
+          <Empty>{t('empty')}</Empty>
         ) : (
           <Row>
             {members.map((m) => (
@@ -195,7 +194,7 @@ const Members: FC = () => {
                           {m.display_name}
                         </Link>
                         <div className="text-secondary small">
-                          {m.reputation} rep
+                          {t('rep', { count: m.reputation })}
                           {m.pronouns ? ` · ${m.pronouns}` : ''}
                           {m.timezone ? ` · ${m.timezone}` : ''}
                         </div>
@@ -204,13 +203,13 @@ const Members: FC = () => {
                         ) : null}
                         {m.tags.length > 0 ? (
                           <div className="mt-2 d-flex flex-wrap gap-1">
-                            {m.tags.slice(0, 6).map((t) => (
+                            {m.tags.slice(0, 6).map((tag) => (
                               <Badge
-                                key={t.id}
+                                key={tag.id}
                                 bg="body-tertiary"
                                 text="body"
                                 className="border">
-                                {t.name}
+                                {tag.name}
                               </Badge>
                             ))}
                             {m.tags.length > 6 ? (
@@ -225,12 +224,14 @@ const Members: FC = () => {
                           m.open_to_hire) && (
                           <div className="mt-2 small d-flex flex-wrap gap-2">
                             {m.open_to_mentoring && (
-                              <Badge bg="success">Mentoring</Badge>
+                              <Badge bg="success">{t('badge_mentoring')}</Badge>
                             )}
                             {m.open_to_collaboration && (
-                              <Badge bg="info">Collab</Badge>
+                              <Badge bg="info">{t('badge_collab')}</Badge>
                             )}
-                            {m.open_to_hire && <Badge bg="warning">Hire</Badge>}
+                            {m.open_to_hire && (
+                              <Badge bg="warning">{t('badge_hire')}</Badge>
+                            )}
                           </div>
                         )}
                       </div>
@@ -258,7 +259,7 @@ const Members: FC = () => {
         <Card>
           <Card.Body>
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="mb-0">Open to</h6>
+              <h6 className="mb-0">{t('open_to')}</h6>
               {(openToMentoring || openToCollaboration || openToHire) && (
                 <button
                   type="button"
@@ -266,14 +267,14 @@ const Members: FC = () => {
                   onClick={() =>
                     patch({ mentoring: null, collab: null, hire: null })
                   }>
-                  Clear
+                  {t('clear')}
                 </button>
               )}
             </div>
             <Form.Check
               type="checkbox"
               id="filter-mentoring"
-              label="Mentoring"
+              label={t('filter_mentoring')}
               checked={openToMentoring}
               onChange={(e) =>
                 patch({ mentoring: e.target.checked ? '1' : null })
@@ -282,14 +283,14 @@ const Members: FC = () => {
             <Form.Check
               type="checkbox"
               id="filter-collab"
-              label="Collaboration"
+              label={t('filter_collaboration')}
               checked={openToCollaboration}
               onChange={(e) => patch({ collab: e.target.checked ? '1' : null })}
             />
             <Form.Check
               type="checkbox"
               id="filter-hire"
-              label="Hire"
+              label={t('filter_hire')}
               checked={openToHire}
               onChange={(e) => patch({ hire: e.target.checked ? '1' : null })}
             />
@@ -299,31 +300,31 @@ const Members: FC = () => {
         <Card className="mt-3">
           <Card.Body>
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="mb-0">Tags</h6>
+              <h6 className="mb-0">{t('tags')}</h6>
               {tagIds.length > 0 && (
                 <button
                   type="button"
                   className="btn btn-link btn-sm p-0"
                   onClick={() => patch({ tags: null })}>
-                  Clear
+                  {t('clear')}
                 </button>
               )}
             </div>
             {!catalog || catalog.length === 0 ? (
-              <div className="text-secondary small">No tags defined yet.</div>
+              <div className="text-secondary small">{t('no_tags')}</div>
             ) : (
               <div className="d-flex flex-wrap gap-1">
-                {catalog.map((t) => {
-                  const on = tagIds.includes(t.id);
+                {catalog.map((tag) => {
+                  const on = tagIds.includes(tag.id);
                   return (
                     <button
-                      key={t.id}
+                      key={tag.id}
                       type="button"
                       className={`btn btn-sm ${
                         on ? 'btn-primary' : 'btn-outline-secondary'
                       }`}
-                      onClick={() => toggleTag(t.id)}>
-                      {t.name}
+                      onClick={() => toggleTag(tag.id)}>
+                      {tag.name}
                     </button>
                   );
                 })}
@@ -341,32 +342,32 @@ const Members: FC = () => {
             variant="outline-secondary"
             className="mt-3 w-100"
             onClick={() => clearAll()}>
-            Clear all filters
+            {t('clear_all')}
           </Button>
         )}
 
         {!isLoading && (
           <div className="text-secondary small mt-3 text-center">
-            {totalCount} match{totalCount === 1 ? '' : 'es'}
+            {t('matches', { count: totalCount })}
             {tagIds.length > 0 &&
-              ` · ${tagIds.length} tag${tagIds.length === 1 ? '' : 's'}`}
+              ` · ${t('tags_count', { count: tagIds.length })}`}
           </div>
         )}
 
         {tagIds.length > 0 && (
           <div className="mt-2 d-flex flex-wrap gap-1">
             {tagIds.map((id) => {
-              const t = tagById[id];
-              if (!t) return null;
+              const tag = tagById[id];
+              if (!tag) return null;
               return (
                 <Badge
                   key={id}
                   bg="primary"
                   className="d-flex align-items-center gap-1">
-                  {t.name}
+                  {tag.name}
                   <button
                     type="button"
-                    aria-label={`Remove ${t.name}`}
+                    aria-label={t('remove_tag', { name: tag.name })}
                     className="btn btn-sm btn-link p-0 text-white text-decoration-none ms-1"
                     onClick={() => toggleTag(id)}>
                     ×

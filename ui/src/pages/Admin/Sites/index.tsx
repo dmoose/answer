@@ -19,6 +19,7 @@
 
 import { FC, useEffect, useState } from 'react';
 import { Table, Button, Form, Modal, Badge } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '@/hooks';
 import {
@@ -37,12 +38,13 @@ interface Site {
 }
 
 const ROLES = [
-  { id: 1, label: 'User' },
-  { id: 2, label: 'Admin' },
-  { id: 3, label: 'Moderator' },
+  { id: 1, labelKey: 'role_user' },
+  { id: 2, labelKey: 'role_admin' },
+  { id: 3, labelKey: 'role_moderator' },
 ];
 
 const Sites: FC = () => {
+  const { t } = useTranslation('translation', { keyPrefix: 'admin.sites' });
   const Toast = useToast();
   const [sites, setSites] = useState<Site[]>([]);
   const [showSiteModal, setShowSiteModal] = useState(false);
@@ -91,16 +93,16 @@ const Sites: FC = () => {
     try {
       if (editSite) {
         await updateSite({ id: editSite.id, ...siteForm });
-        Toast.onShow({ msg: 'Site updated', variant: 'success' });
+        Toast.onShow({ msg: t('update_success'), variant: 'success' });
       } else {
         await addSite(siteForm);
-        Toast.onShow({ msg: 'Site created', variant: 'success' });
+        Toast.onShow({ msg: t('create_success'), variant: 'success' });
       }
       setShowSiteModal(false);
       loadSites();
     } catch (e: any) {
       Toast.onShow({
-        msg: e?.msg || 'Error saving site',
+        msg: e?.msg || t('save_failed'),
         variant: 'danger',
       });
     }
@@ -120,11 +122,11 @@ const Sites: FC = () => {
         site_id: roleSite.id,
         role_id: roleForm.role_id,
       });
-      Toast.onShow({ msg: 'Role assigned', variant: 'success' });
+      Toast.onShow({ msg: t('role_success'), variant: 'success' });
       setShowRoleModal(false);
     } catch (e: any) {
       Toast.onShow({
-        msg: e?.msg || 'Error assigning role',
+        msg: e?.msg || t('role_failed'),
         variant: 'danger',
       });
     }
@@ -132,24 +134,21 @@ const Sites: FC = () => {
 
   return (
     <>
-      <h3 className="mb-4">Sites</h3>
-      <p className="text-secondary mb-3">
-        Manage the sites in your network. Each site is an independent Q&amp;A
-        community with its own content, tags, and reputation.
-      </p>
+      <h3 className="mb-4">{t('page_title')}</h3>
+      <p className="text-secondary mb-3">{t('page_desc')}</p>
       <div className="mb-3">
         <Button variant="primary" size="sm" onClick={() => handleOpenSite()}>
-          Add Site
+          {t('add_site')}
         </Button>
       </div>
       <Table striped bordered hover size="sm">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Slug</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>{t('name_label')}</th>
+            <th>{t('slug_label')}</th>
+            <th>{t('description_label')}</th>
+            <th>{t('status_label')}</th>
+            <th>{t('actions_label')}</th>
           </tr>
         </thead>
         <tbody>
@@ -162,7 +161,9 @@ const Sites: FC = () => {
               <td>{site.description || '—'}</td>
               <td>
                 <Badge bg={site.status === 1 ? 'success' : 'secondary'}>
-                  {site.status === 1 ? 'Active' : 'Suspended'}
+                  {site.status === 1
+                    ? t('status_active')
+                    : t('status_suspended')}
                 </Badge>
               </td>
               <td>
@@ -171,13 +172,13 @@ const Sites: FC = () => {
                   size="sm"
                   className="me-1"
                   onClick={() => handleOpenSite(site)}>
-                  Edit
+                  {t('edit', { keyPrefix: 'btns' })}
                 </Button>
                 <Button
                   variant="outline-primary"
                   size="sm"
                   onClick={() => handleOpenRole(site)}>
-                  Assign Role
+                  {t('assign_role')}
                 </Button>
               </td>
             </tr>
@@ -185,7 +186,7 @@ const Sites: FC = () => {
           {sites.length === 0 && (
             <tr>
               <td colSpan={5} className="text-center text-muted">
-                No sites found
+                {t('empty')}
               </td>
             </tr>
           )}
@@ -194,37 +195,37 @@ const Sites: FC = () => {
 
       <Modal show={showSiteModal} onHide={() => setShowSiteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{editSite ? 'Edit Site' : 'Add Site'}</Modal.Title>
+          <Modal.Title>
+            {editSite ? t('edit_title') : t('add_title')}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-3">
-            <Form.Label>Name</Form.Label>
+            <Form.Label>{t('name_label')}</Form.Label>
             <Form.Control
               type="text"
               value={siteForm.name}
               onChange={(e) =>
                 setSiteForm({ ...siteForm, name: e.target.value })
               }
-              placeholder="Go Community"
+              placeholder={t('name_placeholder')}
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Slug</Form.Label>
+            <Form.Label>{t('slug_label')}</Form.Label>
             <Form.Control
               type="text"
               value={siteForm.slug}
               onChange={(e) =>
                 setSiteForm({ ...siteForm, slug: e.target.value })
               }
-              placeholder="golang"
+              placeholder={t('slug_placeholder')}
               disabled={!!editSite}
             />
-            <Form.Text className="text-muted">
-              Used in URLs: /s/&#123;slug&#125;
-            </Form.Text>
+            <Form.Text className="text-muted">{t('slug_help')}</Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Description</Form.Label>
+            <Form.Label>{t('description_label')}</Form.Label>
             <Form.Control
               as="textarea"
               rows={2}
@@ -237,32 +238,34 @@ const Sites: FC = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowSiteModal(false)}>
-            Cancel
+            {t('cancel', { keyPrefix: 'btns' })}
           </Button>
           <Button variant="primary" onClick={handleSaveSite}>
-            {editSite ? 'Save' : 'Create'}
+            {editSite
+              ? t('save', { keyPrefix: 'btns' })
+              : t('create', { keyPrefix: 'btns' })}
           </Button>
         </Modal.Footer>
       </Modal>
 
       <Modal show={showRoleModal} onHide={() => setShowRoleModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Assign Role &mdash; {roleSite?.name}</Modal.Title>
+          <Modal.Title>{t('role_title', { name: roleSite?.name })}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-3">
-            <Form.Label>User ID</Form.Label>
+            <Form.Label>{t('user_id_label')}</Form.Label>
             <Form.Control
               type="text"
               value={roleForm.user_id}
               onChange={(e) =>
                 setRoleForm({ ...roleForm, user_id: e.target.value })
               }
-              placeholder="User ID"
+              placeholder={t('user_id_label')}
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Role</Form.Label>
+            <Form.Label>{t('role_label')}</Form.Label>
             <Form.Select
               value={roleForm.role_id}
               onChange={(e) =>
@@ -270,7 +273,7 @@ const Sites: FC = () => {
               }>
               {ROLES.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.label}
+                  {t(r.labelKey)}
                 </option>
               ))}
             </Form.Select>
@@ -278,10 +281,10 @@ const Sites: FC = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowRoleModal(false)}>
-            Cancel
+            {t('cancel', { keyPrefix: 'btns' })}
           </Button>
           <Button variant="primary" onClick={handleSaveRole}>
-            Assign
+            {t('assign')}
           </Button>
         </Modal.Footer>
       </Modal>

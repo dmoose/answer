@@ -32,7 +32,6 @@ import {
   loginSettingStore,
   themeSettingStore,
   sideNavStore,
-  customizeStore,
 } from '@/stores';
 import { logout, useQueryNotificationStatus } from '@/services';
 import { Icon, MobileSideNav } from '@/components';
@@ -52,7 +51,6 @@ const Header: FC = () => {
   const siteInfo = siteInfoStore((state) => state.siteInfo);
   const brandingInfo = brandingStore((state) => state.branding);
   const loginSetting = loginSettingStore((state) => state.login);
-  const customHeader = customizeStore((state) => state.custom_header);
   const { updateReview } = sideNavStore();
   const { data: redDot } = useQueryNotificationStatus();
   const [showMobileSideNav, setShowMobileSideNav] = useState(false);
@@ -110,131 +108,123 @@ const Header: FC = () => {
   }, []);
 
   return (
-    <>
-      <Navbar
-        data-bs-theme={themeMode}
-        expand="xl"
-        className={classnames('sticky-top', navbarStyle)}
-        style={{
-          backgroundColor: theme_config[theme].navbar_style,
-        }}
-        id="header">
-        <div
-          className={classnames(
-            'w-100 d-flex align-items-center',
-            layout === 'Fixed-width' ? 'container-xxl fixed-width' : 'px-3',
-          )}>
-          <Navbar.Toggle
-            className="answer-navBar me-2"
-            onClick={() => {
-              setShowMobileSideNav(!showMobileSideNav);
-              setShowMobileSearchInput(false);
-            }}
-          />
+    <Navbar
+      data-bs-theme={themeMode}
+      expand="xl"
+      className={classnames('sticky-top', navbarStyle)}
+      style={{
+        backgroundColor: theme_config[theme].navbar_style,
+      }}
+      id="header">
+      <div
+        className={classnames(
+          'w-100 d-flex align-items-center',
+          layout === 'Fixed-width' ? 'container-xxl fixed-width' : 'px-3',
+        )}>
+        <Navbar.Toggle
+          className="answer-navBar me-2"
+          onClick={() => {
+            setShowMobileSideNav(!showMobileSideNav);
+            setShowMobileSearchInput(false);
+          }}
+        />
 
-          <Navbar.Brand
-            to="/"
-            as={Link}
-            className="lh-1 me-0 me-sm-5 p-0 nav-text">
-            {brandingInfo.logo ? (
-              <>
-                <img
-                  className="d-none d-xl-block logo me-0"
-                  src={brandingInfo.logo}
-                  alt={siteInfo.name}
-                />
-
-                <img
-                  className="xl-none logo me-0"
-                  src={brandingInfo.mobile_logo || brandingInfo.logo}
-                  alt={siteInfo.name}
-                />
-              </>
-            ) : (
-              <span>{siteInfo.name}</span>
-            )}
-          </Navbar.Brand>
-
-          <SearchInput className="d-none d-lg-block maxw-560" />
-
-          <Nav className="d-block d-lg-none me-2 ms-auto">
-            <Button
-              variant="link"
-              onClick={() => {
-                setShowMobileSideNav(false);
-                setShowMobileSearchInput(!showMobileSearchInput);
-              }}
-              className="p-0 btn-no-border icon-link nav-link d-flex align-items-center justify-content-center">
-              <Icon name="search" className="lh-1 fs-4" />
-            </Button>
-          </Nav>
-
-          <SiteSwitcher />
-
-          {/* pc nav */}
-          {user?.username ? (
-            <Nav className="d-flex align-items-center flex-nowrap flex-row">
-              <Nav.Item className="me-2 d-block d-xl-none">
-                <NavLink
-                  to={askUrl}
-                  className="d-block icon-link nav-link text-center">
-                  <Icon name="plus-lg" className="lh-1 fs-4" />
-                </NavLink>
-              </Nav.Item>
-
-              <Nav.Item className="me-2 d-none d-xl-block">
-                <NavLink
-                  to={askUrl}
-                  className="nav-link d-flex align-items-center text-capitalize text-nowrap">
-                  <Icon name="plus-lg" className="me-2 lh-1 fs-4" />
-                  <span>{t('btns.create')}</span>
-                </NavLink>
-              </Nav.Item>
-
-              <NavItems redDot={redDot} userInfo={user} logOut={handleLogout} />
-            </Nav>
-          ) : (
+        <Navbar.Brand
+          to="/"
+          as={Link}
+          className="lh-1 me-0 me-sm-5 p-0 nav-text">
+          {brandingInfo.logo ? (
             <>
-              <Link
-                className={classnames('me-2 btn btn-link', {
-                  'link-light': navbarStyle === 'theme-dark',
-                  'link-primary': navbarStyle !== 'theme-dark',
-                })}
-                onClick={() => floppyNavigation.storageLoginRedirect()}
-                to={userCenter.getLoginUrl()}>
-                {t('btns.login')}
-              </Link>
-              {loginSetting.allow_new_registrations && (
-                <Link
-                  className={classnames(
-                    'btn',
-                    navbarStyle === 'theme-dark' ? 'btn-light' : 'btn-primary',
-                  )}
-                  to={userCenter.getSignUpUrl()}>
-                  {t('btns.signup')}
-                </Link>
-              )}
+              <img
+                className="d-none d-xl-block logo me-0"
+                src={brandingInfo.logo}
+                alt={siteInfo.name}
+              />
+
+              <img
+                className="xl-none logo me-0"
+                src={brandingInfo.mobile_logo || brandingInfo.logo}
+                alt={siteInfo.name}
+              />
             </>
+          ) : (
+            <span>{siteInfo.name}</span>
           )}
+        </Navbar.Brand>
 
-          <AppSwitcher />
-        </div>
+        <SearchInput className="d-none d-lg-block maxw-560" />
 
-        {showMobileSearchInput && (
-          <div className="w-100 px-3 mt-2 d-block d-lg-none">
-            <SearchInput />
-          </div>
+        <Nav className="d-block d-lg-none me-2 ms-auto">
+          <Button
+            variant="link"
+            onClick={() => {
+              setShowMobileSideNav(false);
+              setShowMobileSearchInput(!showMobileSearchInput);
+            }}
+            className="p-0 btn-no-border icon-link nav-link d-flex align-items-center justify-content-center">
+            <Icon name="search" className="lh-1 fs-4" />
+          </Button>
+        </Nav>
+
+        <SiteSwitcher />
+
+        {/* pc nav */}
+        {user?.username ? (
+          <Nav className="d-flex align-items-center flex-nowrap flex-row">
+            <Nav.Item className="me-2 d-block d-xl-none">
+              <NavLink
+                to={askUrl}
+                className="d-block icon-link nav-link text-center">
+                <Icon name="plus-lg" className="lh-1 fs-4" />
+              </NavLink>
+            </Nav.Item>
+
+            <Nav.Item className="me-2 d-none d-xl-block">
+              <NavLink
+                to={askUrl}
+                className="nav-link d-flex align-items-center text-capitalize text-nowrap">
+                <Icon name="plus-lg" className="me-2 lh-1 fs-4" />
+                <span>{t('btns.create')}</span>
+              </NavLink>
+            </Nav.Item>
+
+            <NavItems redDot={redDot} userInfo={user} logOut={handleLogout} />
+          </Nav>
+        ) : (
+          <>
+            <Link
+              className={classnames('me-2 btn btn-link', {
+                'link-light': navbarStyle === 'theme-dark',
+                'link-primary': navbarStyle !== 'theme-dark',
+              })}
+              onClick={() => floppyNavigation.storageLoginRedirect()}
+              to={userCenter.getLoginUrl()}>
+              {t('btns.login')}
+            </Link>
+            {loginSetting.allow_new_registrations && (
+              <Link
+                className={classnames(
+                  'btn',
+                  navbarStyle === 'theme-dark' ? 'btn-light' : 'btn-primary',
+                )}
+                to={userCenter.getSignUpUrl()}>
+                {t('btns.signup')}
+              </Link>
+            )}
+          </>
         )}
 
-        <MobileSideNav show={showMobileSideNav} onHide={setShowMobileSideNav} />
-      </Navbar>
-      {customHeader && (
-        <div
-          className="site-banner text-center small py-2 border-bottom"
-          dangerouslySetInnerHTML={{ __html: customHeader }}
-        />
+        <AppSwitcher />
+      </div>
+
+      {showMobileSearchInput && (
+        <div className="w-100 px-3 mt-2 d-block d-lg-none">
+          <SearchInput />
+        </div>
       )}
-    </>
+
+      <MobileSideNav show={showMobileSideNav} onHide={setShowMobileSideNav} />
+    </Navbar>
   );
 };
 
