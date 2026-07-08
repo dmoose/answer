@@ -148,10 +148,15 @@ func (ar *ActivityRepo) AddActivity(ctx context.Context, activity *entity.Activi
 func (ar *ActivityRepo) GetUsersWhoHasGainedTheMostReputation(
 	ctx context.Context, startTime, endTime time.Time, limit int) (rankStat []*entity.ActivityUserRankStat, err error) {
 	rankStat = make([]*entity.ActivityUserRankStat, 0)
-	session := ar.data.SiteDB(ctx).Select("user_id, SUM(`rank`) AS rank_amount").Table("activity")
+	// Unscoped: the community leaderboard reflects GLOBAL reputation (one
+	// rank per user across all sub-sites), matching the ranks it displays.
+	// Bounds are forced to UTC because created_at is stored as UTC text; a
+	// local time.Time would bind at local wall-clock and wrongly exclude
+	// recent rows in any non-UTC deployment.
+	session := ar.data.DB.Context(ctx).Select("user_id, SUM(`rank`) AS rank_amount").Table("activity")
 	session.Where("has_rank = 1 AND cancelled = 0")
-	session.Where("created_at >= ?", startTime)
-	session.Where("created_at <= ?", endTime)
+	session.Where("created_at >= ?", startTime.UTC())
+	session.Where("created_at <= ?", endTime.UTC())
 	session.GroupBy("user_id")
 	session.Desc("rank_amount")
 	session.Limit(limit)
@@ -175,11 +180,12 @@ func (ar *ActivityRepo) GetUsersWhoHasVoteMost(
 		}
 	}
 
-	session := ar.data.SiteDB(ctx).Select("user_id, COUNT(*) AS vote_count").Table("activity")
+	// Global + UTC bounds, same rationale as GetUsersWhoHasGainedTheMostReputation.
+	session := ar.data.DB.Context(ctx).Select("user_id, COUNT(*) AS vote_count").Table("activity")
 	session.Where("cancelled = 0")
 	session.In("activity_type", actIDs)
-	session.Where("created_at >= ?", startTime)
-	session.Where("created_at <= ?", endTime)
+	session.Where("created_at >= ?", startTime.UTC())
+	session.Where("created_at <= ?", endTime.UTC())
 	session.GroupBy("user_id")
 	session.Desc("vote_count")
 	session.Limit(limit)
