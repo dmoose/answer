@@ -16,6 +16,12 @@
 # under the License.
 
 version: "2"
+run:
+  # Lint the real deployment flavor: without this the multisite-tagged files
+  # (middleware, repos, migrations) are invisible to the linter.
+  build-tags:
+    - multisite
+
 linters:
   exclusions:
     paths:

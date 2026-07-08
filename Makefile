@@ -22,6 +22,11 @@ $(GOLANGCI):
 build: generate
 	@$(GO) build $(GO_FLAGS) -o $(BIN) $(DIR_SRC)
 
+# The multisite feature is behind a build tag; plain `make build` produces
+# the vanilla single-site flavor with all multisite code compiled out.
+build-multisite: generate
+	@$(GO) build $(GO_FLAGS) -tags multisite -o $(BIN) $(DIR_SRC)
+
 # https://dev.to/thewraven/universal-macos-binaries-with-go-1-16-3mm3
 universal: generate
 	@GOOS=darwin GOARCH=amd64 $(GO_ENV) $(GO) build $(GO_FLAGS) -o ${BIN}_amd64 $(DIR_SRC)

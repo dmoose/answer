@@ -35,4 +35,5 @@ dist/
 .husky/
 
 # Environment variables
-.envanswer-dev
+.env
+answer-dev
