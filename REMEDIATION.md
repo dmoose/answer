@@ -1,4 +1,6 @@
-# Multisite Fork — Remediation Spec
+# Multisite Fork — Remediation Spec (historical)
+
+> Audit record from the 2026-07 remediation. Kept for the reasoning behind the scoping doctrine; it does not describe the current tree. `MULTISITE.md` is the living document. Items this spec left undone (Swagger regeneration, wire bump, SchemaForm parity) and the migration ledger have moved on since.
 
 **Status: IMPLEMENTED 2026-07-05** (all phases; see Appendix A0 for verification amendments and final decisions, and "Implementation notes" below for deviations). Both build flavors compile, vet, and pass the full test suite; frontend passes tsc and eslint. Not yet verified in a running instance — do that before any deploy, especially the v35 repair against a copy of a live DB.
 

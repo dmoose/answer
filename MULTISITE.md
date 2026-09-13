@@ -17,7 +17,7 @@ docker compose -f docker-compose.multisite.yaml build
 docker compose -f docker-compose.multisite.yaml up -d
 ```
 
-Without the `multisite` tag, the binary behaves identically to upstream Answer.
+The `multisite` build is the only supported one. The tag gates query scoping, site resolution and per-site cron passes; the schema, migrations, admin routes and site tables are always compiled in. An untagged binary still runs the fork migrations but stamps no site on new content, so a database must not move between the two flavors.
 
 ## How It Works
 
@@ -33,6 +33,8 @@ Every request is resolved to a site via middleware, checked in order:
 
 `/answer/admin/api/**`, `/static/**`, `/install/**`, and `/healthz` skip resolution entirely so the admin UI can recover the network even when routing is broken.
 
+The resolver records both the site ID and the slug it matched on the request (`multisite.SiteIDFromContext` / `multisite.SiteSlugFromContext`); the slug is what the OIDC login link carries so the callback can return to the originating sub-site.
+
 The frontend uses path-based routing. Navigating to `/s/golang` sets the React Router basename and sends `X-Site-Slug` on every API call.
 
 ### Data Model
@@ -45,7 +47,7 @@ Three tiers of `site_id`:
 | Default site | `'1'` | Content belonging to the default site |
 | Per-site | `'{id}'` | Content and config overrides for other sites |
 
-Twenty content tables carry `site_id`. The `user`, `role`, `power`, and `badge` tables remain global (shared identity), and so do the per-user surfaces: notifications, badge awards, and collections (bookmarks) belong to the person, not a sub-site.
+Twelve content tables are site-scoped (`question`, `answer`, `comment`, `tag`, `tag_rel`, `activity`, `revision`, `review`, `report`, `meta`, `question_link`, `file_record`). `config`, `site_info` and `plugin_config` carry `site_id` for the tier model above. The `user`, `role`, `power`, and `badge` tables remain global (shared identity), and so do the per-user surfaces: notifications, badge awards, and collections (bookmarks) belong to the person, not a sub-site; their `site_id` columns exist but are vestigial.
 
 ### Query Scoping
 
@@ -76,7 +78,7 @@ Databases migrated before the split (`version` at 33 upstream + N fork) are conv
 
 `fork-001` (multi-site support) handles existing installs:
 - Creates `site` and `user_site_role_rel` via entity Sync
-- Adds `site_id` columns/indexes with explicit, idempotent, dialect-aware DDL (SQLite and Postgres; xorm Sync is used only to CREATE missing tables — its ALTER path emits MySQL-only syntax)
+- Adds `site_id` columns/indexes with explicit, idempotent DDL that switches on dialect for MySQL, Postgres and SQLite (xorm Sync is used only to CREATE missing tables — its ALTER path emits MySQL-only syntax). The backfill and repair statements still use backtick quoting, which Postgres rejects; Postgres upgrades are untested until that is fixed.
 - Inserts a default site (guarded, idempotent)
 - Backfills content tables to the default site
 - Backfills each user's global role onto the default site in Go (portable, idempotent, most privileged role wins for multi-role users)
@@ -94,6 +96,7 @@ Fresh installs get the correct schema from `InitDB` with the default site seeded
 ```
 POST /answer/admin/api/site          — create site
 PUT  /answer/admin/api/site          — update site
+PUT  /answer/admin/api/site/status   — activate / suspend (the default site cannot be suspended)
 GET  /answer/admin/api/site          — get site by id
 GET  /answer/admin/api/sites         — list all sites
 PUT  /answer/admin/api/site/role     — assign per-site role
@@ -156,6 +159,8 @@ A built-in Connector plugin for [fastgate](https://git.6-p.cc/catapulsion/fastga
 
 Browser → Answer login → redirect to fastgate `/authorize` → magic link email → click → fastgate session → redirect back to Answer with auth code → Answer exchanges code for tokens via `/token` → fetches user info via `/userinfo` → creates/logs in user.
 
+A login started on a sub-site returns there: the login link carries `?site=<slug>`, the core keeps it in the OAuth state, and the callback lands on `/s/<slug>/users/auth-landing`. Connector URLs (login links, `redirect_uri`, landing) are always built from the global site URL, never a sub-site's General override. See `FASTGATE_INTEGRATION.md` §1.
+
 Existing fastgate sessions enable true SSO — if already authenticated with fastgate (e.g. from another app), the login is instant with no email prompt. Answer logout clears the Answer session only; the fastgate session persists (standard SSO behavior).
 
 ### Handle = Answer username
@@ -184,12 +189,13 @@ The translator loader now fails fast on bundle errors — bad YAML crashes start
 
 ## Known Limitations
 
-- **Private mode API leak** — upstream registers content routes in the `MustUnAuth` group which bypasses `login_required`. Needs a route group fix for true API-level content protection.
-- **Network profile frontend** — API exists at `/network/user/profile`, no React page yet.
 - **Site role only escalates** — a user's per-site role takes effect only when it is more privileged than the global role; a site role cannot demote a global admin. By design (network admin overrides everywhere), but worth noting.
 - **Uploads are not site-partitioned** — one physical `/uploads/` tree serves all sub-sites (hashed filenames, public assets). `file_record` rows are site-stamped; the files are not.
-- **Badge counting is network-wide** — `badge_award.site_id` records where a badge was earned, but threshold rules (e.g. "10 accepted answers") count across all sites. User reputation crosses sites by design; badges follow the same model.
-- **Single-instance site cache** — site routing reads an in-process slug→id map. Multi-instance deployments will serve stale routes after admin changes until each instance restarts or refreshes its cache.
+- **Badge awards are global** — one achievement set per person; `badge_award.site_id` is vestigial and threshold rules (e.g. "10 accepted answers") count across all sites, like reputation.
+- **`Site.base_url` is stored but unused** — the resolver matches subdomains heuristically and the UI switchers, cross-site search links and OIDC landing all assume path routing under `/s/<slug>`. A sub-site on its own host needs a shared URL helper first.
+- **Single-instance state** — site routing reads an in-process slug→id map refreshed only by the instance that handled the admin change, and the fastgate connector keeps its in-flight login records in memory. Run one replica.
+- **Postgres is untested** — see Migration above.
+- **Presentation overrides are enforced by the controllers, not the repo** — `site_info` reads resolve a per-site override for any type; only the general/branding/css-html endpoints write them. A stray override row for another type would take effect.
 
 ## Future: Plugin Page Framework
 
