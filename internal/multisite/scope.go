@@ -44,6 +44,19 @@ func SiteIDFromContext(ctx context.Context) string {
 	return ""
 }
 
+// SiteSlugFromContext returns the slug the request's site was resolved by.
+// Only the HTTP middleware records it; derived contexts report "".
+func SiteSlugFromContext(ctx context.Context) string {
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		if val, exists := ginCtx.Get(constant.SiteSlugFlag); exists {
+			if slug, ok := val.(string); ok {
+				return slug
+			}
+		}
+	}
+	return ""
+}
+
 // WithoutSite returns a child context with the site ID cleared. Used for
 // opt-in cross-site reads (e.g. network-wide search).
 func WithoutSite(ctx context.Context) context.Context {

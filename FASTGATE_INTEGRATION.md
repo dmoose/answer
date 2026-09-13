@@ -26,6 +26,13 @@ Standard OIDC authorization code flow against fastgate, hardened:
   invariant is now enforced, not assumed.
 - Token/userinfo/JWKS calls use a 10-second timeout client bound to the
   request context.
+- **Returns to the originating sub-site.** The login link the SPA renders
+  carries `?site=<slug>` when fetched from a sub-site; the core stores the
+  slug in its OAuth state and, after the callback (which arrives on the
+  default site: no `/s/` prefix, no header), lands the browser on
+  `<site_url>/s/<slug>/users/auth-landing`. The SPA under that basename then
+  restores the pre-login path it stashed. Same for the account-page bind
+  flow. Slugs are validated against the slug charset before being echoed.
 
 Three config fields (set in **Admin → Plugins → Fastgate**):
 

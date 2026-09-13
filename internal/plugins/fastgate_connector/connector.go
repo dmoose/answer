@@ -83,10 +83,11 @@ func (c *Connector) ConnectorSender(ctx *plugin.GinContext, receiverURL string) 
 	authURL := issuer + "/authorize"
 
 	// The core issues the state (cache-backed, carries the login/bind
-	// intent) and expects it echoed on the callback; the pending record is
-	// keyed by it so both sides agree. Falls back to a local token when the
-	// core sent none.
-	state := ctx.Query("state")
+	// intent and originating site) and expects it echoed on the callback;
+	// the pending record is keyed by it so both sides agree. Read from the
+	// URL directly: the core injects it after gin's query cache may already
+	// be populated. Falls back to a local token when the core sent none.
+	state := ctx.Request.URL.Query().Get("state")
 	var err1 error
 	if state == "" {
 		state, err1 = randomToken()

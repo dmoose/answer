@@ -89,6 +89,34 @@ func resolveWith(sm *SiteMiddleware, method, target, host, slugHeader string) (s
 	return siteID, w.Code, ctx.IsAborted()
 }
 
+// slugWith is resolveWith's companion for the recorded slug.
+func slugWith(sm *SiteMiddleware, target, host, slugHeader string) string {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req := httptest.NewRequest("GET", target, nil)
+	if host != "" {
+		req.Host = host
+	}
+	if slugHeader != "" {
+		req.Header.Set("X-Site-Slug", slugHeader)
+	}
+	ctx.Request = req
+	sm.ResolveSite()(ctx)
+	v, _ := ctx.Get(constant.SiteSlugFlag)
+	slug, _ := v.(string)
+	return slug
+}
+
+func TestResolveSite_RecordsSlug(t *testing.T) {
+	sm := newSiteTestMiddleware(t)
+	assert.Equal(t, "alpha", slugWith(sm, "/answer/api/v1/question/page", "", "alpha"), "header")
+	assert.Equal(t, "alpha", slugWith(sm, "/s/alpha/questions", "", ""), "path prefix")
+	assert.Equal(t, "alpha", slugWith(sm, "/questions", "alpha.example.com", ""), "subdomain")
+	assert.Equal(t, "default", slugWith(sm, "/questions", "", ""), "fallback names the default site")
+	assert.Equal(t, "", slugWith(sm, "/answer/admin/api/sites", "", "alpha"), "admin API skips resolution")
+}
+
 func TestResolveSite_AbsentSlugUsesDefault(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
 	siteID, _, aborted := resolveWith(sm, "GET", "/questions", "example.com", "")

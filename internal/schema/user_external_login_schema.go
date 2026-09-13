@@ -87,6 +87,9 @@ type ExternalLoginOAuthState struct {
 	Provider string `json:"provider"`
 	Intent   string `json:"intent"`
 	UserID   string `json:"user_id,omitempty"`
+	// SiteSlug is the sub-site the flow started on; the callback lands
+	// there instead of the default site.
+	SiteSlug string `json:"site_slug,omitempty"`
 }
 
 // ExternalLoginUnbindingReq external login unbinding user

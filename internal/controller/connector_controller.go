@@ -21,8 +21,11 @@ package controller
 
 import (
 	"fmt"
+	"github.com/apache/answer/internal/multisite"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strings"
 
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"
@@ -98,16 +101,25 @@ func (cc *ConnectorController) ConnectorRedirectDispatcher(ctx *gin.Context) {
 	cc.ConnectorRedirect(c)(ctx)
 }
 
+// Connector URLs (login links, the OIDC redirect_uri, the landing page) are
+// built from the GLOBAL site URL: the API lives at the origin, and a
+// sub-site's General override may legitimately set its site URL to the
+// /s/<slug> prefix, which would put the API under the SPA catch-all.
+// The sub-site itself travels in the OAuth state instead.
 func (cc *ConnectorController) ConnectorLogin(connector plugin.Connector) (fn func(ctx *gin.Context)) {
 	return func(ctx *gin.Context) {
-		general, err := cc.siteInfoService.GetSiteGeneral(ctx)
+		general, err := cc.siteInfoService.GetSiteGeneral(multisite.WithoutSite(ctx))
 		if err != nil {
 			log.Error(err)
 			ctx.Redirect(http.StatusFound, "/50x")
 			return
 		}
 
-		state := ctx.Query("state")
+		// Read the query off the URL, not via ctx.Query: gin parses the
+		// query once and caches it, and the state injected below must be
+		// visible to the connector's own ctx.Query("state").
+		q := ctx.Request.URL.Query()
+		state := q.Get("state")
 		if len(state) > 0 {
 			stateInfo, err := cc.userExternalService.GetOAuthState(ctx, state)
 			if err != nil || stateInfo == nil || stateInfo.Provider != connector.ConnectorSlugName() {
@@ -116,14 +128,15 @@ func (cc *ConnectorController) ConnectorLogin(connector plugin.Connector) (fn fu
 				return
 			}
 		} else {
+			// The login link is a plain browser navigation with no site
+			// header, so the originating site rides along as ?site=.
 			state, err = cc.userExternalService.GenerateOAuthState(ctx, connector.ConnectorSlugName(),
-				schema.ExternalLoginOAuthStateLoginIntent, "")
+				schema.ExternalLoginOAuthStateLoginIntent, "", validSiteSlug(q.Get("site")))
 			if err != nil {
 				log.Errorf("generate connector oauth state failed: %v", err)
 				ctx.Redirect(http.StatusFound, "/50x")
 				return
 			}
-			q := ctx.Request.URL.Query()
 			q.Set("state", state)
 			ctx.Request.URL.RawQuery = q.Encode()
 		}
@@ -139,7 +152,7 @@ func (cc *ConnectorController) ConnectorLogin(connector plugin.Connector) (fn fu
 
 func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn func(ctx *gin.Context)) {
 	return func(ctx *gin.Context) {
-		siteGeneral, err := cc.siteInfoService.GetSiteGeneral(ctx)
+		siteGeneral, err := cc.siteInfoService.GetSiteGeneral(multisite.WithoutSite(ctx))
 		if err != nil {
 			log.Errorf("get site info failed: %v", err)
 			ctx.Redirect(http.StatusFound, "/50x")
@@ -176,13 +189,20 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 			ctx.Redirect(http.StatusFound, "/50x")
 			return
 		}
+		// The callback URL carries no site, so the request resolved to the
+		// default site; land the browser back on the site the flow started
+		// on. Identity is global, so the login itself is site-agnostic.
+		landing := siteGeneral.SiteUrl
+		if stateInfo != nil {
+			landing = siteLandingURL(siteGeneral.SiteUrl, stateInfo.SiteSlug)
+		}
 		if stateInfo != nil && stateInfo.Intent == schema.ExternalLoginOAuthStateBindIntent {
 			if err = cc.userExternalService.BindExternalLoginToUser(ctx, stateInfo.UserID, u); err != nil {
 				log.Errorf("bind external login failed: %v", err)
 				ctx.Redirect(http.StatusFound, "/50x")
 				return
 			}
-			ctx.Redirect(http.StatusFound, fmt.Sprintf("%s/users/settings/account", siteGeneral.SiteUrl))
+			ctx.Redirect(http.StatusFound, fmt.Sprintf("%s/users/settings/account", landing))
 			return
 		}
 		resp, err := cc.userExternalService.ExternalLogin(ctx, u)
@@ -197,10 +217,10 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		}
 		if len(resp.AccessToken) > 0 {
 			ctx.Redirect(http.StatusFound, fmt.Sprintf("%s/users/auth-landing?access_token=%s",
-				siteGeneral.SiteUrl, resp.AccessToken))
+				landing, resp.AccessToken))
 		} else {
 			ctx.Redirect(http.StatusFound, fmt.Sprintf("%s/users/confirm-email?binding_key=%s",
-				siteGeneral.SiteUrl, resp.BindingKey))
+				landing, resp.BindingKey))
 		}
 	}
 }
@@ -214,20 +234,24 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 // @Success 200 {object} handler.RespBody{data=[]schema.ConnectorInfoResp}
 // @Router /answer/api/v1/connector/info [get]
 func (cc *ConnectorController) ConnectorsInfo(ctx *gin.Context) {
-	general, err := cc.siteInfoService.GetSiteGeneral(ctx)
+	general, err := cc.siteInfoService.GetSiteGeneral(multisite.WithoutSite(ctx))
 	if err != nil {
 		handler.HandleResponse(ctx, err, nil)
 		return
 	}
 
+	siteQuery := ""
+	if slug := validSiteSlug(multisite.SiteSlugFromContext(ctx)); slug != "" {
+		siteQuery = "?site=" + url.QueryEscape(slug)
+	}
 	resp := make([]*schema.ConnectorInfoResp, 0)
 	_ = plugin.CallConnector(func(fn plugin.Connector) error {
 		connectorName := fn.ConnectorName()
 		resp = append(resp, &schema.ConnectorInfoResp{
 			Name: connectorName.Translate(ctx),
 			Icon: fn.ConnectorLogoSVG(),
-			Link: fmt.Sprintf("%s%s%s%s", general.SiteUrl,
-				commonRouterPrefix, ConnectorLoginRouterPrefix, fn.ConnectorSlugName()),
+			Link: fmt.Sprintf("%s%s%s%s%s", general.SiteUrl,
+				commonRouterPrefix, ConnectorLoginRouterPrefix, fn.ConnectorSlugName(), siteQuery),
 		})
 		return nil
 	})
@@ -262,7 +286,7 @@ func (cc *ConnectorController) ExternalLoginBindingUserSendEmail(ctx *gin.Contex
 // @Success 200 {object} handler.RespBody{data=[]schema.ConnectorUserInfoResp}
 // @Router /answer/api/v1/connector/user/info [get]
 func (cc *ConnectorController) ConnectorsUserInfo(ctx *gin.Context) {
-	general, err := cc.siteInfoService.GetSiteGeneral(ctx)
+	general, err := cc.siteInfoService.GetSiteGeneral(multisite.WithoutSite(ctx))
 	if err != nil {
 		handler.HandleResponse(ctx, err, nil)
 		return
@@ -288,7 +312,7 @@ func (cc *ConnectorController) ConnectorsUserInfo(ctx *gin.Context) {
 			commonRouterPrefix, ConnectorLoginRouterPrefix, fn.ConnectorSlugName())
 		if len(externalID) == 0 {
 			state, err := cc.userExternalService.GenerateOAuthState(ctx, fn.ConnectorSlugName(),
-				schema.ExternalLoginOAuthStateBindIntent, userID)
+				schema.ExternalLoginOAuthStateBindIntent, userID, validSiteSlug(multisite.SiteSlugFromContext(ctx)))
 			if err != nil {
 				return err
 			}
@@ -330,4 +354,26 @@ func (cc *ConnectorController) ExternalLoginUnbinding(ctx *gin.Context) {
 
 	resp, err := cc.userExternalService.ExternalLoginUnbinding(ctx, req)
 	handler.HandleResponse(ctx, err, resp)
+}
+
+// siteSlugPattern is the slug charset; anything else is dropped rather
+// than echoed into a redirect.
+var siteSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
+// validSiteSlug returns slug when it names a sub-site, "" for the default
+// site or anything malformed.
+func validSiteSlug(slug string) string {
+	if slug == "" || slug == "default" || !siteSlugPattern.MatchString(slug) {
+		return ""
+	}
+	return slug
+}
+
+// siteLandingURL is where a browser flow that started on slug should land:
+// the site URL itself for the default site, otherwise its /s/<slug> prefix.
+func siteLandingURL(siteURL, slug string) string {
+	if slug = validSiteSlug(slug); slug == "" {
+		return siteURL
+	}
+	return strings.TrimRight(siteURL, "/") + "/s/" + slug
 }

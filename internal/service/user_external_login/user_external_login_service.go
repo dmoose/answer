@@ -94,7 +94,7 @@ func NewUserExternalLoginService(
 }
 
 func (us *UserExternalLoginService) GenerateOAuthState(
-	ctx context.Context, provider, intent, userID string) (state string, err error) {
+	ctx context.Context, provider, intent, userID, siteSlug string) (state string, err error) {
 	state = token.GenerateToken()
 	duration := constant.ConnectorOAuthStateCacheTime
 	if intent == schema.ExternalLoginOAuthStateBindIntent {
@@ -104,6 +104,7 @@ func (us *UserExternalLoginService) GenerateOAuthState(
 		Provider: provider,
 		Intent:   intent,
 		UserID:   userID,
+		SiteSlug: siteSlug,
 	}, duration)
 	return state, err
 }

@@ -29,6 +29,8 @@ import (
 
 func SiteIDFromContext(_ context.Context) string { return "" }
 
+func SiteSlugFromContext(_ context.Context) string { return "" }
+
 func WithoutSite(ctx context.Context) context.Context { return ctx }
 
 func WithSiteID(ctx context.Context, _ string) context.Context { return ctx }

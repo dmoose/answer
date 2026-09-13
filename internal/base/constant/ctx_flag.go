@@ -23,6 +23,7 @@ const (
 	AcceptLanguageFlag = "Accept-Language"
 	ShortIDFlag        = "Short-ID-Enabled"
 	SiteIDFlag         = "Site-ID"
+	SiteSlugFlag       = "Site-Slug"
 )
 
 type ContextKey string

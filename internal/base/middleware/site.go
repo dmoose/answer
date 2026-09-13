@@ -120,7 +120,7 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			return
 		}
 
-		var siteID string
+		var siteID, siteSlug string
 
 		// 1. Subdomain — a heuristic: the first host label is often the
 		// deployment host ("answer.example.com"), not a site slug, so a
@@ -131,7 +131,9 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 		}
 		parts := strings.SplitN(host, ".", 2)
 		if len(parts) >= 2 && parts[0] != "www" {
-			siteID = sm.resolve(parts[0])
+			if siteID = sm.resolve(parts[0]); siteID != "" {
+				siteSlug = parts[0]
+			}
 		}
 
 		// 2. Path prefix — explicit: /s/<slug> names a site, so an unknown
@@ -144,7 +146,7 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 				slug = rest[:idx]
 			}
 			if resolved := sm.resolve(slug); resolved != "" {
-				siteID = resolved
+				siteID, siteSlug = resolved, slug
 			} else {
 				siteNotFound(ctx, path)
 				return
@@ -155,7 +157,7 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 		if siteID == "" {
 			if h := ctx.GetHeader("X-Site-Slug"); h != "" {
 				if resolved := sm.resolve(h); resolved != "" {
-					siteID = resolved
+					siteID, siteSlug = resolved, h
 				} else {
 					siteNotFound(ctx, path)
 					return
@@ -168,7 +170,9 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 		// Belt-and-suspenders so the network keeps serving even if the
 		// default site gets deactivated by accident.
 		if siteID == "" {
-			siteID = sm.resolve("default")
+			if siteID = sm.resolve("default"); siteID != "" {
+				siteSlug = "default"
+			}
 		}
 		if siteID == "" {
 			siteID = sm.fallbackSiteID()
@@ -180,6 +184,7 @@ func (sm *SiteMiddleware) ResolveSite() gin.HandlerFunc {
 			return
 		}
 		ctx.Set(constant.SiteIDFlag, siteID)
+		ctx.Set(constant.SiteSlugFlag, siteSlug)
 		ctx.Next()
 	}
 }
