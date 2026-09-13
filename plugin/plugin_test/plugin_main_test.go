@@ -77,8 +77,16 @@ func TestMain(t *testing.M) {
 		// Use sqlite3 to test.
 		dbSetting = dbSettingMapping[string(schemas.SQLITE)]
 	}
+	var tmpDir string
 	if dbSetting.Driver == string(schemas.SQLITE) {
-		_ = os.RemoveAll(dbSetting.Connection)
+		// Per-process directory: test packages run in parallel and must
+		// not share one SQLite file.
+		dir, err := os.MkdirTemp("", "answer-plugin-test-")
+		if err != nil {
+			panic(err)
+		}
+		tmpDir = dir
+		dbSetting.Connection = filepath.Join(dir, "answer-test-data.db")
 	}
 
 	if err := initTestDataSource(dbSetting); err != nil {
@@ -89,6 +97,9 @@ func TestMain(t *testing.M) {
 	ret := t.Run()
 	if tearDown != nil {
 		tearDown()
+	}
+	if tmpDir != "" {
+		_ = os.RemoveAll(tmpDir)
 	}
 	os.Exit(ret)
 }

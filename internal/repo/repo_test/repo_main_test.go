@@ -77,7 +77,14 @@ func TestMain(t *testing.M) {
 		dbSetting = dbSettingMapping[string(schemas.SQLITE)]
 	}
 	if dbSetting.Driver == string(schemas.SQLITE) {
-		_ = os.RemoveAll(dbSetting.Connection)
+		// Per-process directory: test packages run in parallel and must
+		// not share one SQLite file.
+		dir, err := os.MkdirTemp("", "answer-repo-test-")
+		if err != nil {
+			panic(err)
+		}
+		defer func() { _ = os.RemoveAll(dir) }()
+		dbSetting.Connection = filepath.Join(dir, "answer-test-data.db")
 	}
 
 	defer func() {
