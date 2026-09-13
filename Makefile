@@ -52,6 +52,16 @@ check:
 test:
 	@$(GO) test ./internal/repo/repo_test
 
+# Pull a live tenant's SQLite DB (online .backup) to answer-data/pulled/<tenant>/.
+# HOST is an ssh config alias; REMOTE_DIR overrides the tenant dir on the box.
+pull-db:
+	@script/pull-db.sh $(HOST) $(TENANT) $(REMOTE_DIR)
+
+# Run `answer upgrade` from this tree against a copy of DB and show the
+# migration ledgers before/after; the source file is untouched.
+upgrade-check:
+	@script/upgrade-check.sh $(DB)
+
 # clean all build result
 clean:
 	@$(GO) clean ./...
