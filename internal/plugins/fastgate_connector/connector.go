@@ -82,7 +82,15 @@ func (c *Connector) ConnectorSender(ctx *plugin.GinContext, receiverURL string) 
 	issuer := c.Config.Issuer
 	authURL := issuer + "/authorize"
 
-	state, err1 := randomToken()
+	// The core issues the state (cache-backed, carries the login/bind
+	// intent) and expects it echoed on the callback; the pending record is
+	// keyed by it so both sides agree. Falls back to a local token when the
+	// core sent none.
+	state := ctx.Query("state")
+	var err1 error
+	if state == "" {
+		state, err1 = randomToken()
+	}
 	nonce, err2 := randomToken()
 	verifier, err3 := randomToken()
 	bind, err4 := randomToken()

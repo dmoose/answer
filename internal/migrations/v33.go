@@ -17,14 +17,23 @@
  * under the License.
  */
 
-package templaterender
+package migrations
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/apache/answer/internal/schema"
+	"github.com/apache/answer/internal/entity"
+	"xorm.io/xorm"
 )
 
-func (q *TemplateRenderController) UserInfo(ctx context.Context, req *schema.GetOtherUserInfoByUsernameReq) (resp *schema.GetOtherUserInfoByUsernameResp, err error) {
-	return q.userService.GetOtherUserInfoByUsername(ctx, req)
+// addAIConversationReasoningContent adds a reasoning_content column to the
+// ai_conversation_record table so that the chain-of-thought returned by
+// reasoning/thinking-capable models (e.g. DeepSeek) is persisted along with
+// the regular content and can be re-displayed when reloading a conversation.
+func addAIConversationReasoningContent(ctx context.Context, x *xorm.Engine) error {
+	if err := x.Context(ctx).Sync(new(entity.AIConversationRecord)); err != nil {
+		return fmt.Errorf("sync ai_conversation_record table failed: %w", err)
+	}
+	return nil
 }

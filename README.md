@@ -27,7 +27,7 @@ This fork adds Stack Exchange-style multi-tenancy: shared users across independe
 ### Running with docker
 
 ```bash
-docker run -d -p 9080:80 -v answer-data:/data --name answer apache/answer:2.0.1
+docker run -d -p 9080:80 -v answer-data:/data --name answer apache/answer:2.0.2
 ```
 
 For more information, see [Installation](https://answer.apache.org/docs/installation).

@@ -177,6 +177,9 @@ func (c *MCPController) MCPAnswersHandler() func(ctx context.Context, request mc
 			}
 			resp := make([]*schema.MCPSearchAnswerInfoResp, 0)
 			for _, answer := range answerList {
+				if answer.Status != entity.AnswerStatusAvailable {
+					continue
+				}
 				t := &schema.MCPSearchAnswerInfoResp{
 					QuestionID:    answer.QuestionID,
 					AnswerID:      answer.ID,
@@ -196,6 +199,9 @@ func (c *MCPController) MCPAnswersHandler() func(ctx context.Context, request mc
 		}
 		resp := make([]*schema.MCPSearchAnswerInfoResp, 0)
 		for _, answer := range answerList {
+			if answer.Status != entity.AnswerStatusAvailable {
+				continue
+			}
 			t := &schema.MCPSearchAnswerInfoResp{
 				QuestionID:    answer.QuestionID,
 				AnswerID:      answer.ID,
