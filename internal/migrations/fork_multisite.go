@@ -193,7 +193,7 @@ func addMultiSiteSupport(ctx context.Context, x *xorm.Engine) error {
 
 	for _, table := range backfillTables {
 		_, err := x.Context(ctx).Exec(
-			fmt.Sprintf("UPDATE `%s` SET `site_id` = ? WHERE `site_id` = ''", table),
+			fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ''", x.Quote(table), x.Quote("site_id"), x.Quote("site_id")),
 			constant.DefaultSiteID)
 		if err != nil {
 			return fmt.Errorf("backfill site_id on %s: %w", table, err)

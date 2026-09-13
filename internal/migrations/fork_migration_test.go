@@ -96,16 +96,17 @@ func seedPreV33(t *testing.T, x *xorm.Engine) {
 	ctx := context.Background()
 	require.NoError(t, x.Context(ctx).Sync(
 		new(legacyTag), new(legacyConfig), new(legacyPluginConfig)))
-	_, err := x.Context(ctx).Insert(&legacyTag{ID: "10", SlugName: "go", DisplayName: "Go"})
+	// Postgres rejects "" for BIGINT columns that Answer stores as strings.
+	_, err := x.Context(ctx).Insert(&legacyTag{ID: "10", SlugName: "go", DisplayName: "Go", RevisionID: "0", UserID: "0"})
 	require.NoError(t, err)
 	_, err = x.Context(ctx).Insert(&legacyConfig{Key: "daily_rank_limit", Value: "200"})
 	require.NoError(t, err)
 
 	require.NoError(t, x.Context(ctx).Sync(new(entity.UserRoleRel)))
 	rels := []entity.UserRoleRel{
-		{UserID: "u1", RoleID: 1},
-		{UserID: "u1", RoleID: 2}, // multi-role user: admin must win the dedup
-		{UserID: "u2", RoleID: 3},
+		{UserID: "101", RoleID: 1},
+		{UserID: "101", RoleID: 2}, // multi-role user: admin must win the dedup
+		{UserID: "102", RoleID: 3},
 	}
 	for i := range rels {
 		_, err := x.Context(ctx).Insert(&rels[i])
@@ -195,7 +196,7 @@ func TestMultisiteMigrationOnSQLite(t *testing.T) {
 		assert.False(t, dup, "one site-role row per user, got extra for %s", r.UserID)
 		got[r.UserID] = r.RoleID
 	}
-	assert.Equal(t, map[string]int{"u1": 2, "u2": 3}, got)
+	assert.Equal(t, map[string]int{"101": 2, "102": 3}, got)
 
 	// user_site_rank is retired.
 	var n int64

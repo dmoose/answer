@@ -49,18 +49,26 @@ func repairMultisiteSchema(ctx context.Context, x *xorm.Engine) error {
 	// single-column uniques were dropped by fork-001, so duplicates could have
 	// crept in since. Refuse loudly rather than silently deleting content:
 	// a duplicate tag row may be referenced by tag_rel and needs a human.
-	dupChecks := []struct{ table, cols string }{
-		{"tag", "slug_name, site_id"},
-		{"config", "`key`, site_id"},
-		{"plugin_config", "plugin_slug_name, site_id"},
+	dupChecks := []struct {
+		table string
+		cols  []string
+	}{
+		{"tag", []string{"slug_name", "site_id"}},
+		{"config", []string{"key", "site_id"}},
+		{"plugin_config", []string{"plugin_slug_name", "site_id"}},
 	}
 	for _, d := range dupChecks {
 		type dupRow struct {
 			N int64 `xorm:"'n'"`
 		}
+		cols := make([]string, len(d.cols))
+		for i, c := range d.cols {
+			cols[i] = x.Quote(c)
+		}
 		var dups []dupRow
 		err := x.Context(ctx).SQL(fmt.Sprintf(
-			"SELECT COUNT(*) AS n FROM `%s` GROUP BY %s HAVING COUNT(*) > 1", d.table, d.cols)).
+			"SELECT COUNT(*) AS n FROM %s GROUP BY %s HAVING COUNT(*) > 1",
+			x.Quote(d.table), strings.Join(cols, ", "))).
 			Find(&dups)
 		if err != nil {
 			return fmt.Errorf("check duplicates on %s: %w", d.table, err)
@@ -69,7 +77,7 @@ func repairMultisiteSchema(ctx context.Context, x *xorm.Engine) error {
 			return fmt.Errorf(
 				"table %s has %d duplicated (%s) groups; resolve them manually before migrating "+
 					"(the composite unique index cannot be created over duplicates)",
-				d.table, len(dups), strings.ReplaceAll(d.cols, "`", ""))
+				d.table, len(dups), strings.Join(d.cols, ", "))
 		}
 	}
 
@@ -90,7 +98,7 @@ func repairMultisiteSchema(ctx context.Context, x *xorm.Engine) error {
 	}
 
 	// Retire the per-site rank table (reputation is global).
-	if _, err := x.Context(ctx).Exec("DROP TABLE IF EXISTS `user_site_rank`"); err != nil {
+	if _, err := x.Context(ctx).Exec("DROP TABLE IF EXISTS " + x.Quote("user_site_rank")); err != nil {
 		return fmt.Errorf("drop user_site_rank: %w", err)
 	}
 

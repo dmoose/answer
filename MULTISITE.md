@@ -76,7 +76,7 @@ Databases migrated before the split (`version` at 33 upstream + N fork) are conv
 
 `fork-001` (multi-site support) handles existing installs:
 - Creates `site` and `user_site_role_rel` via entity Sync
-- Adds `site_id` columns/indexes with explicit, idempotent DDL that switches on dialect for MySQL, Postgres and SQLite (xorm Sync is used only to CREATE missing tables — its ALTER path emits MySQL-only syntax). The backfill and repair statements still use backtick quoting, which Postgres rejects; Postgres upgrades are untested until that is fixed.
+- Adds `site_id` columns/indexes with explicit, idempotent DDL quoted through xorm's dialect quoter, so it runs on MySQL, Postgres and SQLite (xorm Sync is used only to CREATE missing tables — its ALTER path emits MySQL-only syntax). The Postgres path is pinned by `TestMultisiteMigrationOnPostgres`, which runs when `ANSWER_TEST_POSTGRES_DSN` points at a scratch database (CI provides one).
 - Inserts a default site (guarded, idempotent)
 - Backfills content tables to the default site
 - Backfills each user's global role onto the default site in Go (portable, idempotent, most privileged role wins for multi-role users)
@@ -192,7 +192,6 @@ The translator loader now fails fast on bundle errors — bad YAML crashes start
 - **Badge awards are global** — one achievement set per person; `badge_award.site_id` is vestigial and threshold rules (e.g. "10 accepted answers") count across all sites, like reputation.
 - **`Site.base_url` is stored but unused** — the resolver matches subdomains heuristically and the UI switchers, cross-site search links and OIDC landing all assume path routing under `/s/<slug>`. A sub-site on its own host needs a shared URL helper first.
 - **Single-instance state** — site routing reads an in-process slug→id map refreshed only by the instance that handled the admin change, and the fastgate connector keeps its in-flight login records in memory. Run one replica.
-- **Postgres is untested** — see Migration above.
 
 ## Future: Plugin Page Framework
 
@@ -210,6 +209,10 @@ This pattern allows plugins to add full pages (member directory, resource librar
 go build ./...
 go vet ./...
 go test ./...
+
+# Postgres migration tests (skipped without the DSN; the database is wiped)
+docker run -d --name answer-pg -e POSTGRES_USER=answer -e POSTGRES_PASSWORD=answer -e POSTGRES_DB=answer -p 127.0.0.1:55432:5432 postgres:16-alpine
+ANSWER_TEST_POSTGRES_DSN="host=127.0.0.1 port=55432 user=answer password=answer dbname=answer sslmode=disable" go test ./internal/migrations/
 
 # Multisite smoke test against a running instance (see script header)
 ANSWER_ADMIN_TOKEN=<token> BASE_URL=http://localhost:9080 script/test-multisite.sh
