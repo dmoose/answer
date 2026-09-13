@@ -4,10 +4,8 @@ This fork adds Stack Exchange-style multi-tenancy to Apache Answer: shared user 
 
 ## Quick Start
 
-Build with the `multisite` tag:
-
 ```bash
-go build -tags multisite -o answer ./cmd/answer
+go build -o answer ./cmd/answer
 ```
 
 Or use the provided Docker setup:
@@ -17,7 +15,7 @@ docker compose -f docker-compose.multisite.yaml build
 docker compose -f docker-compose.multisite.yaml up -d
 ```
 
-The `multisite` build is the only supported one. The tag gates query scoping, site resolution and per-site cron passes; the schema, migrations, admin routes and site tables are always compiled in. An untagged binary still runs the fork migrations but stamps no site on new content, so a database must not move between the two flavors.
+There is no separate build flavor: site scoping, site resolution and per-site cron passes are always compiled in. (Earlier revisions gated them behind a `multisite` build tag; the untagged variant ran the fork migrations but stamped no site on new content, so it was removed.)
 
 ## How It Works
 
@@ -173,7 +171,7 @@ Two data axes govern every scoping decision. **Content is site-scoped**: questio
 
 - **Identity is global; content is per-site.** `user`, `role`, `power`, `badge` catalog, `api_key`, `user_notification_config`, `user_external_login`, network directory tables (`network_profile`, `network_project`, `profile_tag`, `member_directory`) are all unscoped. So are the per-user surfaces: **notifications (one inbox), badge awards (one achievement set), and collections (one bookmark list)** — their repos are deliberately un-scoped and their entity `site_id` columns are vestigial.
 - **`config` is purely global.** Functional config (rank thresholds, limits, reasons, SMTP) is org-wide: one row set (`site_id=''`), one cache key, no per-site override branch. A config override would also fork the auto-increment ID that activity rows store as `activity_type`, orphaning history.
-- **`site_info` is per-site for presentation only.** The per-site override surface is `general` (name), `branding` (logo/favicon), and `css-html` (the injection bundle); everything else resolves the global row. Overrides are wholesale per type: a site that defines `css-html` authors the whole bundle, a site without an override inherits the global row entirely. Admin saves target a site explicitly via `?site_id=` on the general/branding/custom-css-html endpoints (the admin API itself stays site-less); the admin UI exposes this as the "Editing site" picker. Cache entries are keyed by the tier the row belongs to — override rows under site keys, the global row under the global key, plus a short "no override" marker — so a global edit is immediately visible on every non-overridden site.
+- **`site_info` is per-site for presentation only.** The per-site override surface is `general` (name), `branding` (logo/favicon), and `css-html` (the injection bundle); everything else resolves the global row. The repo enforces this allowlist on both reads and writes (`presentationTypes` in `internal/repo/site_info`), so a functional type saved from a site context lands on the global row and a stray override row for one is ignored. An override for a site that does not exist is refused. Overrides are wholesale per type: a site that defines `css-html` authors the whole bundle, a site without an override inherits the global row entirely. Admin saves target a site explicitly via `?site_id=` on the general/branding/custom-css-html endpoints (the admin API itself stays site-less); the admin UI exposes this as the "Editing site" picker. Cache entries are keyed by the tier the row belongs to — override rows under site keys, the global row under the global key, plus a short "no override" marker — so a global edit is immediately visible on every non-overridden site.
 - **`plugin_config` is purely global.** Plugin runtime is process-wide and applies config once at startup. Earlier site-scoped writes silently hid admin saves from the loader — `SavePluginConfig` now always writes the global row regardless of context.
 - **The default site cannot be deactivated.** `SiteService.SetSiteStatus` refuses to disable `DefaultSiteID`. The resolver also falls back to the lowest-ID active site if the default ever goes missing.
 - **An explicitly named unknown site is a 404.** `/s/typo` and a bogus `X-Site-Slug` return not-found (JSON for API calls, the SPA shell with 404 status for navigations) instead of silently serving the default site under the wrong URL. Only an ABSENT site signal falls back to the default. The subdomain heuristic stays silent on a miss — the first host label usually names the deployment, not a site (deployment-ish labels like `answer`, `www` are also reserved slugs).
@@ -195,7 +193,6 @@ The translator loader now fails fast on bundle errors — bad YAML crashes start
 - **`Site.base_url` is stored but unused** — the resolver matches subdomains heuristically and the UI switchers, cross-site search links and OIDC landing all assume path routing under `/s/<slug>`. A sub-site on its own host needs a shared URL helper first.
 - **Single-instance state** — site routing reads an in-process slug→id map refreshed only by the instance that handled the admin change, and the fastgate connector keeps its in-flight login records in memory. Run one replica.
 - **Postgres is untested** — see Migration above.
-- **Presentation overrides are enforced by the controllers, not the repo** — `site_info` reads resolve a per-site override for any type; only the general/branding/css-html endpoints write them. A stray override row for another type would take effect.
 
 ## Future: Plugin Page Framework
 
@@ -210,12 +207,16 @@ This pattern allows plugins to add full pages (member directory, resource librar
 ## Build & Test
 
 ```bash
-# Go builds (both modes)
 go build ./...
-go build -tags multisite ./...
+go vet ./...
+go test ./...
 
-# Tests
-go test -tags multisite ./internal/multisite/ ./internal/service/site/ ./internal/service/rank/ ./internal/service/role/
+# Multisite smoke test against a running instance (see script header)
+ANSWER_ADMIN_TOKEN=<token> BASE_URL=http://localhost:9080 script/test-multisite.sh
+
+# Try an upgrade against a copy of a live database
+make pull-db HOST=<ssh alias> TENANT=<tenant>
+make upgrade-check DB=answer-data/pulled/<tenant>/answer.db
 
 # Docker (includes UI embed guard)
 docker compose -f docker-compose.multisite.yaml build --no-cache

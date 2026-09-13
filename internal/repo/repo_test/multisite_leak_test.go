@@ -1,5 +1,3 @@
-//go:build multisite
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -30,6 +28,7 @@ import (
 	"github.com/apache/answer/internal/repo/config"
 	"github.com/apache/answer/internal/repo/plugin_config"
 	"github.com/apache/answer/internal/repo/site_info"
+	"github.com/segmentfault/pacman/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +40,20 @@ const (
 
 func siteCtx(siteID string) context.Context {
 	return context.WithValue(context.Background(), constant.SiteIDContextKey, siteID)
+}
+
+// ensureSites seeds the site rows the leak tests address; site_info
+// overrides are refused for sites that do not exist.
+func ensureSites(t *testing.T) {
+	t.Helper()
+	for _, id := range []string{siteA, siteB} {
+		exist, err := testDataSource.DB.ID(id).Get(&entity.Site{})
+		require.NoError(t, err)
+		if !exist {
+			_, err = testDataSource.DB.Insert(&entity.Site{ID: id, Name: id, Slug: id, Status: entity.SiteStatusActive})
+			require.NoError(t, err)
+		}
+	}
 }
 
 // Test_configRepo_ConfigIsGlobal verifies the decided model: functional
@@ -125,11 +138,13 @@ func Test_configRepo_GlobalUpdateInNoSiteContext(t *testing.T) {
 // global default. Pre-fix the global row was overwritten regardless of
 // site context.
 func Test_siteInfoRepo_SiteSaveDoesNotMutateGlobal(t *testing.T) {
+	ensureSites(t)
 	repo := site_info.NewSiteInfo(testDataSource)
 	db := testDataSource.DB
 
-	// Seed a global site_info row.
-	siteType := "test_leak_siteinfo"
+	// Seed a global site_info row (a presentation type: only those can be
+	// overridden per site).
+	siteType := constant.SiteTypeBranding
 	_, err := db.Insert(&entity.SiteInfo{Type: siteType, Content: "global-content", Status: 1, SiteID: ""})
 	require.NoError(t, err)
 
@@ -157,10 +172,11 @@ func Test_siteInfoRepo_SiteSaveDoesNotMutateGlobal(t *testing.T) {
 // from GetByType is the global default, not Site A's override (cache and
 // DB both checked).
 func Test_siteInfoRepo_SiteReadDoesNotLeak(t *testing.T) {
+	ensureSites(t)
 	repo := site_info.NewSiteInfo(testDataSource)
 	db := testDataSource.DB
 
-	siteType := "test_leak_siteinfo_read"
+	siteType := constant.SiteTypeCustomCssHTML
 	_, err := db.Insert(&entity.SiteInfo{Type: siteType, Content: "global-banner", Status: 1, SiteID: ""})
 	require.NoError(t, err)
 
@@ -222,4 +238,47 @@ func clearConfigCache(t *testing.T, key, _ string) {
 	t.Helper()
 	cacheKey := "answer:config:key:" + key
 	_ = testDataSource.Cache.Del(context.Background(), cacheKey)
+}
+
+// Test_siteInfoRepo_FunctionalTypesAreGlobal verifies the presentation
+// allowlist: a non-presentation type saved from a site context lands on the
+// global row and is read back from every site, and a stray override row for
+// such a type is ignored on read.
+func Test_siteInfoRepo_FunctionalTypesAreGlobal(t *testing.T) {
+	ensureSites(t)
+	repo := site_info.NewSiteInfo(testDataSource)
+	db := testDataSource.DB
+	siteType := constant.SiteTypeLogin
+
+	err := repo.SaveByType(siteCtx(siteA), siteType, &entity.SiteInfo{Type: siteType, Content: "login-from-site-a", Status: 1})
+	require.NoError(t, err)
+
+	n, err := db.Where("type = ? AND site_id = ?", siteType, siteA).Count(&entity.SiteInfo{})
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, n, "functional type must never get a site row")
+	global := &entity.SiteInfo{}
+	exist, err := db.Where("type = ? AND site_id = ''", siteType).Get(global)
+	require.NoError(t, err)
+	require.True(t, exist)
+	assert.Equal(t, "login-from-site-a", global.Content)
+
+	// A stray override row (legacy data) is invisible to reads.
+	_, err = db.Insert(&entity.SiteInfo{Type: siteType, Content: "stray-override", Status: 1, SiteID: siteB})
+	require.NoError(t, err)
+	got, exist, err := repo.GetByType(siteCtx(siteB), siteType, true)
+	require.NoError(t, err)
+	require.True(t, exist)
+	assert.Equal(t, "login-from-site-a", got.Content)
+}
+
+// Test_siteInfoRepo_OverrideRequiresExistingSite verifies a presentation
+// override cannot be written for a site that does not exist.
+func Test_siteInfoRepo_OverrideRequiresExistingSite(t *testing.T) {
+	repo := site_info.NewSiteInfo(testDataSource)
+	err := repo.SaveByType(siteCtx("no-such-site"), constant.SiteTypeGeneral,
+		&entity.SiteInfo{Type: constant.SiteTypeGeneral, Content: "{}", Status: 1})
+	require.Error(t, err)
+	perr, ok := err.(*errors.Error)
+	require.True(t, ok, "expected a pacman error, got %#v", err)
+	assert.True(t, errors.IsNotFound(perr), "expected not-found, got reason %q", perr.Reason)
 }

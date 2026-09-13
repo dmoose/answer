@@ -44,11 +44,40 @@ func NewSiteInfo(data *data.Data) siteinfo_common.SiteInfoRepo {
 	}
 }
 
+// presentationTypes are the site_info types a sub-site may override. Every
+// other type is functional (login, security, SEO, theme, ...) and is
+// org-wide: reads and writes for those resolve the global row no matter
+// what site the context names, so a stray override row can never take
+// effect and no caller can create one.
+var presentationTypes = map[string]bool{
+	constant.SiteTypeGeneral:       true,
+	constant.SiteTypeBranding:      true,
+	constant.SiteTypeCustomCssHTML: true,
+}
+
+// tierSiteID is TierSiteID narrowed by the allowlist above.
+func tierSiteID(ctx context.Context, siteType string) string {
+	if !presentationTypes[siteType] {
+		return ""
+	}
+	return multisite.TierSiteID(ctx)
+}
+
 // SaveByType save site setting by type. From a site context, writes a per-site
-// override; from no site context, writes the global default. Never overwrites
-// the global row from inside a site request.
+// override for presentation types; otherwise writes the global default. Never
+// overwrites the global row from inside a site request. A site override is
+// refused when the target site does not exist.
 func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *entity.SiteInfo) (err error) {
-	siteID := multisite.TierSiteID(ctx)
+	siteID := tierSiteID(ctx, siteType)
+	if siteID != "" {
+		exist, err := sr.data.DB.Context(ctx).ID(siteID).Get(&entity.Site{})
+		if err != nil {
+			return errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+		}
+		if !exist {
+			return errors.NotFound(reason.SiteNotFound)
+		}
+	}
 	data.SiteID = siteID
 
 	old := &entity.SiteInfo{}
@@ -79,7 +108,7 @@ func (sr *siteInfoRepo) SaveByType(ctx context.Context, siteType string, data *e
 // "absent" marker so the fallback doesn't hit the DB on every request.
 func (sr *siteInfoRepo) GetByType(ctx context.Context, siteType string, withoutCache ...bool) (siteInfo *entity.SiteInfo, exist bool, err error) {
 	useCache := len(withoutCache) == 0
-	siteID := multisite.TierSiteID(ctx)
+	siteID := tierSiteID(ctx, siteType)
 
 	if siteID != "" {
 		overrideKnownAbsent := false
