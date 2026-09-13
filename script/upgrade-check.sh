@@ -5,7 +5,7 @@
 #
 #   script/upgrade-check.sh <path-to-answer.db> [binary]
 #
-# The binary defaults to ./answer-dev built with -tags multisite.
+# The binary defaults to ./answer-dev, built from this tree if absent.
 set -euo pipefail
 
 src=${1:?path to answer.db}
@@ -15,8 +15,8 @@ cd "$root"
 
 [ -f "$src" ] || { echo "no such file: $src" >&2; exit 1; }
 if [ ! -x "$bin" ]; then
-  echo "building $bin (multisite)"
-  go build -tags multisite -o "$bin" ./cmd/answer
+  echo "building $bin"
+  go build -o "$bin" ./cmd/answer
 fi
 
 stage=$(mktemp -d "${TMPDIR:-/tmp}/answer-upgrade-check.XXXXXX")

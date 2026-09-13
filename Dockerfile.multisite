@@ -16,7 +16,6 @@ COPY --from=ui-builder /app/ui/build ${BUILD_DIR}/ui/build
 WORKDIR ${BUILD_DIR}
 RUN apk --no-cache add build-base git bash \
     && CGO_ENABLED=0 go build \
-       -tags "multisite" \
        -ldflags="-X github.com/apache/answer/cmd.Version=2.0.2-multisite -extldflags -static" \
        -o answer ./cmd/answer
 

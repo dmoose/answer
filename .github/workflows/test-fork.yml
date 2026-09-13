@@ -15,13 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Fork-specific test gate: the whole multisite feature is behind the
-# `multisite` build tag, so every check runs BOTH flavors — the plain
-# build silently tests the noop implementation otherwise. Real-DB repo
-# tests fall back to SQLite in os.TempDir() when TEST_DB_DRIVER is
-# unset, so no service containers are needed.
+# Fork-specific test gate. Real-DB repo tests fall back to SQLite in a
+# per-package temp dir when TEST_DB_DRIVER is unset, so no service
+# containers are needed.
 
-name: Test Fork (both build flavors)
+name: Test Fork
 
 on:
   push:
@@ -47,20 +45,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build (vanilla)
+      - name: Build
         run: go build ./...
 
-      - name: Build (multisite)
-        run: go build -tags multisite ./...
-
-      - name: Vet (vanilla)
+      - name: Vet
         run: go vet ./...
 
-      - name: Vet (multisite)
-        run: go vet -tags multisite ./...
-
-      - name: Test (vanilla)
+      - name: Test
         run: go test ./...
-
-      - name: Test (multisite)
-        run: go test -tags multisite ./...
