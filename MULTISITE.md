@@ -72,7 +72,7 @@ The `user_site_role_rel` table stores per-site role assignments — board author
 
 Fork migrations live in `internal/migrations/fork*.go` with their own ledger (`fork_version` table, `forkMigrations` list) so upstream's index-tracked list stays byte-for-byte upstream. `answer upgrade` runs upstream's pending migrations first, then the fork's. Fork migrations are named `fork-NNN`, never upstream semver, and must be idempotent because they run after whatever upstream migrations landed in the same upgrade. Adding one means appending to `forkMigrations`; upstream merges never touch the order.
 
-Databases migrated before the split (`version` at 36: 33 upstream + 3 fork) are converted once on the next upgrade: `version` is reset to 33 and `fork_version` set to 3. Any other layout with a `site` table present refuses to upgrade until inspected.
+Databases migrated before the split (`version` at 33 upstream + N fork) are converted once on the next upgrade: `version` is reset to 33 and `fork_version` set to N, then any pending fork migrations run. Any other layout with a `site` table present refuses to upgrade until inspected, and `answer upgrade` exits non-zero so the container does not start against it.
 
 `fork-001` (multi-site support) handles existing installs:
 - Creates `site` and `user_site_role_rel` via entity Sync

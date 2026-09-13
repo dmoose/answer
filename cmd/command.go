@@ -156,7 +156,7 @@ To run answer, use:
 			}
 			if err = migrations.Migrate(c.Debug, c.Data.Database, c.Data.Cache, upgradeVersion); err != nil {
 				fmt.Println("migrate failed: ", err.Error())
-				return
+				os.Exit(1)
 			}
 			fmt.Println("upgrade done")
 		},

@@ -55,13 +55,12 @@ func (forkVersion) TableName() string { return "fork_version" }
 
 const forkVersionID = 1
 
-// legacyUpstreamCount and legacySharedVersion describe the ledger layout
-// before the split: upstream had 33 migrations at the fork point and the
-// three fork migrations sat at indexes 33..35, so a fully migrated database
-// read 36 in `version`.
+// legacyUpstreamCount describes the ledger layout before the split:
+// upstream had 33 migrations at the fork point and the fork migrations sat
+// at indexes 33 onward, so a database in that layout reads 33 plus the
+// number of fork migrations it has run in `version`.
 const (
 	legacyUpstreamCount   = 33
-	legacySharedVersion   = legacyUpstreamCount + 3
 	legacyForkMarkerTable = "site"
 )
 
@@ -105,10 +104,11 @@ func setForkDBVersion(ctx context.Context, x *xorm.Engine, v int64) error {
 // to counting upstream entries only. It fires exactly once: a database with
 // a fork ledger row is left alone.
 //
-// Detection: no fork row, the marker table from the first fork migration
-// exists, and `version` reads the legacy shared value. A vanilla database
-// (no marker table) simply gets a fork row at 0 and takes the normal
-// upgrade path through all fork migrations.
+// Detection: no fork row and the marker table from the first fork migration
+// exists. `version` minus the upstream count at the fork point is then the
+// number of fork migrations already applied; any pending ones run through
+// migrateFork as usual. A vanilla database (no marker table) simply gets a
+// fork row at 0 and takes the normal upgrade path through all of them.
 func bootstrapForkLedger(ctx context.Context, x *xorm.Engine) error {
 	current, err := GetCurrentDBVersion(x)
 	if err != nil {
@@ -129,17 +129,20 @@ func bootstrapForkLedger(ctx context.Context, x *xorm.Engine) error {
 		return fmt.Errorf("check %s table failed: %v", legacyForkMarkerTable, err)
 	}
 	forkVersionValue := int64(0)
-	if markerExists && current == legacySharedVersion {
-		forkVersionValue = ForkExpectedVersion()
+	if markerExists {
+		applied := current - legacyUpstreamCount
+		if applied < 1 || applied > ForkExpectedVersion() {
+			return fmt.Errorf("fork ledger split: %s table exists but version reads %d, expected %d..%d; "+
+				"inspect the version table before upgrading",
+				legacyForkMarkerTable, current, legacyUpstreamCount+1, legacyUpstreamCount+ForkExpectedVersion())
+		}
+		forkVersionValue = applied
 		fmt.Printf("[migrate] fork ledger split: upstream version %d -> %d, fork version -> %d\n",
 			current, legacyUpstreamCount, forkVersionValue)
 		if _, err := x.Context(ctx).ID(1).Cols("version_number").
 			Update(&entity.Version{VersionNumber: legacyUpstreamCount}); err != nil {
 			return fmt.Errorf("reset upstream version failed: %v", err)
 		}
-	} else if markerExists {
-		return fmt.Errorf("fork ledger split: %s table exists but version reads %d, expected %d; "+
-			"inspect the version table before upgrading", legacyForkMarkerTable, current, legacySharedVersion)
 	}
 	if _, err := x.Context(ctx).InsertOne(&forkVersion{ID: forkVersionID, VersionNumber: forkVersionValue}); err != nil {
 		return fmt.Errorf("insert fork version failed: %v", err)

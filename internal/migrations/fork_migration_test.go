@@ -273,25 +273,27 @@ func mustForkLedger(t *testing.T, x *xorm.Engine) int64 {
 	return v
 }
 
-// legacyLedgerDB builds a database in the pre-split layout: fork migrations
-// applied, version row 1 holding the shared count, no fork row.
-func legacyLedgerDB(t *testing.T) (*xorm.Engine, string) {
+// legacyLedgerDB builds a database in the pre-split layout with the first
+// `applied` fork migrations run and `version` holding the shared count.
+func legacyLedgerDB(t *testing.T, applied int) (*xorm.Engine, string) {
 	t.Helper()
 	dbFile := filepath.Join(t.TempDir(), "legacy-ledger.db")
 	x, err := data.NewDB(false, &data.Database{Driver: string(schemas.SQLITE), Connection: dbFile})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = x.Close() })
 	seedPreV33(t, x)
-	runMultisiteMigrations(t, x)
-	require.NoError(t, x.DropTables(new(forkVersion)))
+	ctx := context.Background()
+	for _, m := range forkMigrations[:applied] {
+		require.NoError(t, m.Migrate(ctx, x), m.Version())
+	}
 	require.NoError(t, x.Sync(new(entity.Version)))
-	_, err = x.Insert(&entity.Version{ID: 1, VersionNumber: legacySharedVersion})
+	_, err = x.Insert(&entity.Version{ID: 1, VersionNumber: int64(legacyUpstreamCount + applied)})
 	require.NoError(t, err)
 	return x, dbFile
 }
 
 func TestForkLedgerBootstrapSplitsLegacyLayout(t *testing.T) {
-	x, _ := legacyLedgerDB(t)
+	x, _ := legacyLedgerDB(t, len(forkMigrations))
 	ctx := context.Background()
 
 	require.NoError(t, bootstrapForkLedger(ctx, x))
@@ -316,9 +318,35 @@ func TestForkLedgerBootstrapVanillaStartsAtZero(t *testing.T) {
 	assert.EqualValues(t, 0, mustForkLedger(t, x), "vanilla DB owes every fork migration")
 }
 
+// TestForkLedgerBootstrapPartialLegacyLayout is the live-site shape: the
+// repair migration never ran, so `version` reads upstream + 2.
+func TestForkLedgerBootstrapPartialLegacyLayout(t *testing.T) {
+	x, _ := legacyLedgerDB(t, 2)
+	ctx := context.Background()
+	// The original multisite migration created this table; the repaired
+	// fork-001 does not, so model the live shape explicitly.
+	_, err := x.Exec("CREATE TABLE user_site_rank (id INTEGER PRIMARY KEY, user_id TEXT, site_id TEXT, rank INTEGER)")
+	require.NoError(t, err)
+
+	require.NoError(t, bootstrapForkLedger(ctx, x))
+	assert.EqualValues(t, legacyUpstreamCount, upstreamVersion(t, x))
+	assert.EqualValues(t, 2, mustForkLedger(t, x))
+
+	var n int64
+	_, err = x.SQL("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='user_site_rank'").Get(&n)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, n, "repair not yet applied")
+
+	require.NoError(t, migrateFork(ctx, x, nil))
+	assert.Equal(t, ForkExpectedVersion(), mustForkLedger(t, x))
+	_, err = x.SQL("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='user_site_rank'").Get(&n)
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, n, "pending repair ran after the split")
+}
+
 func TestForkLedgerBootstrapRefusesUnknownLayout(t *testing.T) {
-	x, _ := legacyLedgerDB(t)
-	_, err := x.ID(1).Cols("version_number").Update(&entity.Version{VersionNumber: legacySharedVersion - 1})
+	x, _ := legacyLedgerDB(t, len(forkMigrations))
+	_, err := x.ID(1).Cols("version_number").Update(&entity.Version{VersionNumber: legacyUpstreamCount + ForkExpectedVersion() + 1})
 	require.NoError(t, err)
 
 	err = bootstrapForkLedger(context.Background(), x)
@@ -332,7 +360,7 @@ func TestForkLedgerBootstrapRefusesUnknownLayout(t *testing.T) {
 // legacy-layout database: both ledgers land at their expected values and the
 // fork migrations, already applied, no-op through.
 func TestMigrateSplitsLedgerEndToEnd(t *testing.T) {
-	x, dbFile := legacyLedgerDB(t)
+	x, dbFile := legacyLedgerDB(t, 2)
 	require.NoError(t, x.Close())
 	dbConf := &data.Database{Driver: string(schemas.SQLITE), Connection: dbFile}
 
