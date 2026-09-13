@@ -60,7 +60,7 @@ Twenty content tables carry `site_id`. The `user`, `role`, `power`, and `badge` 
 
 ### Reputation — global, with per-site attribution retained
 
-Reputation is **global**: one rank per user, earned anywhere, gating privileges identically on every sub-site (upstream's native model). The daily rank limit is likewise global. The per-site rank layer (`user_site_rank`) is retired — dropped by migration v2.2.1.
+Reputation is **global**: one rank per user, earned anywhere, gating privileges identically on every sub-site (upstream's native model). The daily rank limit is likewise global. The per-site rank layer (`user_site_rank`) is retired — dropped by migration `fork-003`.
 
 **Invariant (do not regress):** every `activity` and vote row keeps its originating `site_id`. Privilege is computed from the global sum, but the per-site attribution stays queryable — `SUM(rank) GROUP BY site_id` per user — so a per-site "reputation earned here" display (Option C) is a later query plus UI, never a re-migration.
 
@@ -70,7 +70,11 @@ The `user_site_role_rel` table stores per-site role assignments — board author
 
 ### Migration
 
-The v33 migration (`v2.1.0`) handles existing installs:
+Fork migrations live in `internal/migrations/fork*.go` with their own ledger (`fork_version` table, `forkMigrations` list) so upstream's index-tracked list stays byte-for-byte upstream. `answer upgrade` runs upstream's pending migrations first, then the fork's. Fork migrations are named `fork-NNN`, never upstream semver, and must be idempotent because they run after whatever upstream migrations landed in the same upgrade. Adding one means appending to `forkMigrations`; upstream merges never touch the order.
+
+Databases migrated before the split (`version` at 36: 33 upstream + 3 fork) are converted once on the next upgrade: `version` is reset to 33 and `fork_version` set to 3. Any other layout with a `site` table present refuses to upgrade until inspected.
+
+`fork-001` (multi-site support) handles existing installs:
 - Creates `site` and `user_site_role_rel` via entity Sync
 - Adds `site_id` columns/indexes with explicit, idempotent, dialect-aware DDL (SQLite and Postgres; xorm Sync is used only to CREATE missing tables — its ALTER path emits MySQL-only syntax)
 - Inserts a default site (guarded, idempotent)
@@ -79,9 +83,9 @@ The v33 migration (`v2.1.0`) handles existing installs:
 - Leaves config/site_info as global defaults
 - Drops single-column unique indexes, replaced by composite (column, site_id) with names matching a fresh install
 
-The v35 repair migration (`v2.2.1`) fixes databases that ran the original v33, whose dialect-specific steps silently failed on SQLite: it converges the schema (missing composite unique indexes), re-runs the role backfill, and drops the retired `user_site_rank` table. It refuses loudly if duplicate rows would violate the composite uniques rather than deleting content.
+`fork-003` (repair) fixes databases that ran the original multi-site migration, whose dialect-specific steps silently failed on SQLite: it converges the schema (missing composite unique indexes), re-runs the role backfill, and drops the retired `user_site_rank` table. It refuses loudly if duplicate rows would violate the composite uniques rather than deleting content.
 
-Fresh installs get the correct schema from `InitDB` with the default site seeded first. Migration behavior is pinned by `internal/migrations/multisite_migration_test.go`, including fresh-vs-upgraded index convergence.
+Fresh installs get the correct schema from `InitDB` with the default site seeded first and both ledgers set to their expected values. Migration behavior is pinned by `internal/migrations/fork_migration_test.go`, including fresh-vs-upgraded index convergence and the ledger split.
 
 ## Admin
 

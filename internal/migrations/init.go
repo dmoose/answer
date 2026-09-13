@@ -116,6 +116,13 @@ func (m *Mentor) syncTable() {
 
 func (m *Mentor) initVersionTable() {
 	_, m.err = m.engine.Context(m.ctx).Insert(&entity.Version{ID: 1, VersionNumber: ExpectedVersion()})
+	if m.err != nil {
+		return
+	}
+	if m.err = m.engine.Context(m.ctx).Sync(new(forkVersion)); m.err != nil {
+		return
+	}
+	_, m.err = m.engine.Context(m.ctx).Insert(&forkVersion{ID: forkVersionID, VersionNumber: ForkExpectedVersion()})
 }
 
 func (m *Mentor) initAdminUser() {

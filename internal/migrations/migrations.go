@@ -108,9 +108,6 @@ var migrations = []Migration{
 	NewMigration("v1.8.0", "change admin menu", updateAdminMenuSettings, true),
 	NewMigration("v1.8.1", "ai feat", aiFeat, true),
 	NewMigration("v2.0.1", "change avatar type to text", updateAvatarType, false),
-	NewMigration("v2.1.0", "add multi-site support", addMultiSiteSupport, true),
-	NewMigration("v2.2.0", "add network directory (profile, projects, tags)", addNetworkDirectory, false),
-	NewMigration("v2.2.1", "repair multisite schema (composite uniques, role backfill, retire user_site_rank)", repairMultisiteSchema, false),
 }
 
 func GetMigrations() []Migration {
@@ -158,6 +155,9 @@ func Migrate(debug bool, dbConf *data.Database, cacheConf *data.CacheConf, upgra
 		_ = engine.Close()
 	}()
 
+	if err := bootstrapForkLedger(context.Background(), engine); err != nil {
+		return err
+	}
 	currentDBVersion, err := GetCurrentDBVersion(engine)
 	if err != nil {
 		return err
@@ -193,6 +193,9 @@ func Migrate(debug bool, dbConf *data.Database, cacheConf *data.CacheConf, upgra
 			return err
 		}
 		currentDBVersion++
+	}
+	if err := migrateFork(context.Background(), engine, cache); err != nil {
+		return err
 	}
 	if cache != nil {
 		cacheCleanup()

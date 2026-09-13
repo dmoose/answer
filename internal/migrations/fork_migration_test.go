@@ -46,7 +46,7 @@ func newMigrationTestEngine(t *testing.T) *xorm.Engine {
 	return engine
 }
 
-// Legacy (pre-v33) table shapes: identical to the current entities minus
+// Legacy (pre-multisite) table shapes: identical to the current entities minus
 // site_id, with the original single-column unique indexes. Declared as xorm
 // entities so the fixture columns are exactly what xorm itself would have
 // created — hand-rolled DDL drifts from xorm's type mapping and makes Sync
@@ -88,7 +88,7 @@ type legacyPluginConfig struct {
 
 func (legacyPluginConfig) TableName() string { return "plugin_config" }
 
-// seedPreV33 builds the slice of a pre-multisite database that v33/v35
+// seedPreV33 builds the slice of a pre-multisite database that the fork migrations
 // exercise: the three tables with legacy single-column unique indexes plus
 // user_role_rel content (one multi-role user to prove the dedup).
 func seedPreV33(t *testing.T, x *xorm.Engine) {
@@ -113,22 +113,14 @@ func seedPreV33(t *testing.T, x *xorm.Engine) {
 	}
 }
 
-// runMultisiteMigrations runs the multisite-era migrations in the order the
-// real runner would (v2.1.0 → v2.2.0 → v2.2.1).
+// runMultisiteMigrations runs the fork ledger the way the real runner would:
+// every fork migration, in order, from a fork version of 0.
 func runMultisiteMigrations(t *testing.T, x *xorm.Engine) {
 	t.Helper()
-	ctx := context.Background()
-	for _, version := range []string{"v2.1.0", "v2.2.0", "v2.2.1"} {
-		found := false
-		for _, m := range migrations {
-			if m.Version() == version {
-				require.NoError(t, m.Migrate(ctx, x), version)
-				found = true
-				break
-			}
-		}
-		require.True(t, found, "migration %s not registered", version)
-	}
+	require.NoError(t, migrateFork(context.Background(), x, nil))
+	v, err := getForkDBVersion(context.Background(), x)
+	require.NoError(t, err)
+	require.Equal(t, ForkExpectedVersion(), v)
 }
 
 func uniqueIndexNames(t *testing.T, x *xorm.Engine, table string) map[string]bool {
@@ -255,4 +247,109 @@ func TestFreshAndMigratedSchemasConverge(t *testing.T) {
 			uniqueIndexNames(t, migrated, table),
 			"unique indexes on %s must match a fresh install", table)
 	}
+}
+
+func upstreamVersion(t *testing.T, x *xorm.Engine) int64 {
+	t.Helper()
+	row := &entity.Version{ID: 1}
+	has, err := x.Get(row)
+	require.NoError(t, err)
+	require.True(t, has, "version row missing")
+	return row.VersionNumber
+}
+
+func forkLedger(t *testing.T, x *xorm.Engine) (int64, bool) {
+	t.Helper()
+	row := &forkVersion{ID: forkVersionID}
+	has, err := x.Get(row)
+	require.NoError(t, err)
+	return row.VersionNumber, has
+}
+
+func mustForkLedger(t *testing.T, x *xorm.Engine) int64 {
+	t.Helper()
+	v, has := forkLedger(t, x)
+	require.True(t, has, "fork_version row missing")
+	return v
+}
+
+// legacyLedgerDB builds a database in the pre-split layout: fork migrations
+// applied, version row 1 holding the shared count, no fork row.
+func legacyLedgerDB(t *testing.T) (*xorm.Engine, string) {
+	t.Helper()
+	dbFile := filepath.Join(t.TempDir(), "legacy-ledger.db")
+	x, err := data.NewDB(false, &data.Database{Driver: string(schemas.SQLITE), Connection: dbFile})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = x.Close() })
+	seedPreV33(t, x)
+	runMultisiteMigrations(t, x)
+	require.NoError(t, x.DropTables(new(forkVersion)))
+	require.NoError(t, x.Sync(new(entity.Version)))
+	_, err = x.Insert(&entity.Version{ID: 1, VersionNumber: legacySharedVersion})
+	require.NoError(t, err)
+	return x, dbFile
+}
+
+func TestForkLedgerBootstrapSplitsLegacyLayout(t *testing.T) {
+	x, _ := legacyLedgerDB(t)
+	ctx := context.Background()
+
+	require.NoError(t, bootstrapForkLedger(ctx, x))
+	assert.EqualValues(t, legacyUpstreamCount, upstreamVersion(t, x))
+	assert.Equal(t, ForkExpectedVersion(), mustForkLedger(t, x))
+
+	// Second run is a no-op: the fork row is the "already split" marker.
+	require.NoError(t, bootstrapForkLedger(ctx, x))
+	assert.EqualValues(t, legacyUpstreamCount, upstreamVersion(t, x))
+	assert.Equal(t, ForkExpectedVersion(), mustForkLedger(t, x))
+}
+
+func TestForkLedgerBootstrapVanillaStartsAtZero(t *testing.T) {
+	x := newMigrationTestEngine(t)
+	ctx := context.Background()
+	require.NoError(t, x.Sync(new(entity.Version)))
+	_, err := x.Insert(&entity.Version{ID: 1, VersionNumber: legacyUpstreamCount})
+	require.NoError(t, err)
+
+	require.NoError(t, bootstrapForkLedger(ctx, x))
+	assert.EqualValues(t, legacyUpstreamCount, upstreamVersion(t, x), "upstream ledger untouched")
+	assert.EqualValues(t, 0, mustForkLedger(t, x), "vanilla DB owes every fork migration")
+}
+
+func TestForkLedgerBootstrapRefusesUnknownLayout(t *testing.T) {
+	x, _ := legacyLedgerDB(t)
+	_, err := x.ID(1).Cols("version_number").Update(&entity.Version{VersionNumber: legacySharedVersion - 1})
+	require.NoError(t, err)
+
+	err = bootstrapForkLedger(context.Background(), x)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "inspect the version table")
+	_, has := forkLedger(t, x)
+	assert.False(t, has, "no fork row written on refusal")
+}
+
+// TestMigrateSplitsLedgerEndToEnd drives the real upgrade entry point on a
+// legacy-layout database: both ledgers land at their expected values and the
+// fork migrations, already applied, no-op through.
+func TestMigrateSplitsLedgerEndToEnd(t *testing.T) {
+	x, dbFile := legacyLedgerDB(t)
+	require.NoError(t, x.Close())
+	dbConf := &data.Database{Driver: string(schemas.SQLITE), Connection: dbFile}
+
+	require.NoError(t, Migrate(false, dbConf, &data.CacheConf{}, ""))
+
+	x, err := data.NewDB(false, dbConf)
+	require.NoError(t, err)
+	defer func() { _ = x.Close() }()
+	assert.Equal(t, ExpectedVersion(), upstreamVersion(t, x))
+	assert.Equal(t, ForkExpectedVersion(), mustForkLedger(t, x))
+	var n int64
+	_, err = x.SQL("SELECT COUNT(*) FROM `user_site_role_rel`").Get(&n)
+	require.NoError(t, err)
+	assert.Greater(t, n, int64(0), "fork data survives the split")
+
+	// Running upgrade again is a pure no-op.
+	require.NoError(t, Migrate(false, dbConf, &data.CacheConf{}, ""))
+	assert.Equal(t, ExpectedVersion(), upstreamVersion(t, x))
+	assert.Equal(t, ForkExpectedVersion(), mustForkLedger(t, x))
 }

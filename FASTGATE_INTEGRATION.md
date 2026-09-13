@@ -230,5 +230,5 @@ service_config:
 ```
 
 Network directory tables (`network_profile`, `network_project`,
-`profile_tag`, `user_profile_tag`) still get created by migration v2.2.0
+`profile_tag`, `user_profile_tag`) still get created by migration `fork-002`
 but stay empty. No frontend nav entries, all `/network/*` endpoints 404.

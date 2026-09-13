@@ -27,7 +27,7 @@ import (
 	"xorm.io/xorm"
 )
 
-// repairMultisiteSchema fixes databases that ran the original v33, whose
+// repairMultisiteSchema fixes databases that ran the original multi-site migration, whose
 // dialect-specific steps silently failed on SQLite (errors were demoted to
 // warnings while the schema version still advanced):
 //
@@ -42,11 +42,11 @@ import (
 //     stays derivable from activity.site_id. The table's data was never
 //     correct on SQLite installs anyway (same NOW() failure).
 //
-// Everything here is idempotent: databases migrated by the repaired v33
+// Everything here is idempotent: databases migrated by the repaired fork-001
 // no-op straight through.
 func repairMultisiteSchema(ctx context.Context, x *xorm.Engine) error {
 	// The composite uniques cannot be created over duplicate rows. The old
-	// single-column uniques were dropped by v33, so duplicates could have
+	// single-column uniques were dropped by fork-001, so duplicates could have
 	// crept in since. Refuse loudly rather than silently deleting content:
 	// a duplicate tag row may be referenced by tag_rel and needs a human.
 	dupChecks := []struct{ table, cols string }{
