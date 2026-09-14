@@ -235,6 +235,9 @@ func verifyIDToken(client *http.Client, jwks *jwksCache, issuer, clientID, token
 	if err := json.Unmarshal(payloadRaw, claims); err != nil {
 		return nil, fmt.Errorf("parse id_token claims: %w", err)
 	}
+	if claims.Sub == "" {
+		return nil, fmt.Errorf("id_token has no subject")
+	}
 	now := time.Now()
 	if strings.TrimRight(claims.Iss, "/") != strings.TrimRight(issuer, "/") {
 		return nil, fmt.Errorf("id_token issuer %q does not match %q", claims.Iss, issuer)

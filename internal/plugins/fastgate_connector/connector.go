@@ -173,8 +173,7 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return userInfo, fmt.Errorf("token exchange failed (%d): %s", resp.StatusCode, body)
+		return userInfo, fmt.Errorf("token exchange failed (%d): %s", resp.StatusCode, errorSnippet(resp.Body))
 	}
 
 	var tokenResp struct {
@@ -209,8 +208,7 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	defer func() { _ = uiResp.Body.Close() }()
 
 	if uiResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(uiResp.Body)
-		return userInfo, fmt.Errorf("userinfo failed (%d): %s", uiResp.StatusCode, body)
+		return userInfo, fmt.Errorf("userinfo failed (%d): %s", uiResp.StatusCode, errorSnippet(uiResp.Body))
 	}
 
 	var claims struct {
@@ -242,9 +240,11 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 
 	// The core binds existing accounts by email alone, so per the plugin
 	// contract the email is only forwarded when the IdP asserts it is
-	// verified (fastgate always does; both sources must agree).
+	// verified (fastgate always does; both sources must agree) and the ID
+	// token and userinfo name the same address.
 	email := claims.Email
-	if !claims.EmailVerified || !idClaims.EmailVerified {
+	if !claims.EmailVerified || !idClaims.EmailVerified ||
+		(idClaims.Email != "" && !strings.EqualFold(idClaims.Email, claims.Email)) {
 		email = ""
 	}
 
@@ -341,7 +341,18 @@ func (c *Connector) AfterLogin(ctx context.Context, externalID, localUserID stri
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	respBody, _ := io.ReadAll(resp.Body)
-	log.Warnf("fastgate directory identity report rejected (%d): %s", resp.StatusCode, respBody)
+	log.Warnf("fastgate directory identity report rejected (%d): %s", resp.StatusCode, errorSnippet(resp.Body))
 	return fmt.Errorf("identity report status %d", resp.StatusCode)
+}
+
+// errorSnippet returns a bounded, single-line excerpt of an error response
+// body for log context: never the whole body, never multi-line.
+func errorSnippet(r io.Reader) string {
+	const limit = 256
+	b, _ := io.ReadAll(io.LimitReader(r, limit+1))
+	snippet := strings.Join(strings.Fields(string(b)), " ")
+	if len(snippet) > limit {
+		snippet = snippet[:limit] + "…"
+	}
+	return snippet
 }

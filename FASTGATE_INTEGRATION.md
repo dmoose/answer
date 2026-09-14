@@ -21,11 +21,14 @@ Standard OIDC authorization code flow against fastgate, hardened:
   subject must match the ID token subject.
 - **Email trust:** Answer's core binds existing accounts by email alone, so
   the connector forwards the email claim **only when `email_verified` is
-  true** in both the ID token and userinfo. Fastgate emails are verified by
+  true** in both the ID token and userinfo **and both name the same
+  address**; the ID token must also carry a non-empty `sub`. Fastgate emails are verified by
   construction (magic-link login), so this is belt-and-suspenders — but the
   invariant is now enforced, not assumed.
 - Token/userinfo/JWKS calls use a 10-second timeout client bound to the
-  request context.
+  request context. Error responses are logged as a bounded single-line
+  excerpt; successful identity payloads are never logged beyond provider
+  and subject.
 - **Returns to the originating sub-site.** The login link the SPA renders
   carries `?site=<slug>` when fetched from a sub-site; the core stores the
   slug in its OAuth state and, after the callback (which arrives on the

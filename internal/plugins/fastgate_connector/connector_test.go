@@ -266,6 +266,9 @@ func TestReceiverValidatesIDToken(t *testing.T) {
 			i.idTokenOverride = func(c map[string]any) { c["nonce"] = "stale-nonce" }
 		}, "nonce mismatch"},
 		{"missing id_token", func(i *stubIdP) { i.omitIDToken = true }, "missing id_token"},
+		{"empty subject", func(i *stubIdP) {
+			i.idTokenOverride = func(c map[string]any) { c["sub"] = "" }
+		}, "no subject"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -330,6 +333,20 @@ func TestReceiverHappyPathAndEmailVerification(t *testing.T) {
 	info2, err := c2.ConnectorReceiver(ctx2, "http://answer.example/receiver")
 	require.NoError(t, err)
 	assert.Empty(t, info2.Email, "unverified email must not be forwarded")
+
+	// The ID token and userinfo must name the same address; a mismatch is
+	// treated like an unverified email.
+	idp3 := newStubIdP(t)
+	idp3.idTokenOverride = func(c map[string]any) { c["email"] = "someone-else@example.com" }
+	c3 := newTestConnector(idp3)
+	params3, cookie3 := startLogin(t, c3)
+	stubNonce = params3.Get("nonce")
+	req3 := httptest.NewRequest("GET", "http://answer.example/receiver?code=abc&state="+url.QueryEscape(params3.Get("state")), nil)
+	req3.AddCookie(cookie3)
+	ctx3, _ := ginCtx(req3)
+	info3, err := c3.ConnectorReceiver(ctx3, "http://answer.example/receiver")
+	require.NoError(t, err)
+	assert.Empty(t, info3.Email, "email mismatch between id_token and userinfo must not be forwarded")
 	assert.Equal(t, "user-1", info2.ExternalID)
 }
 
