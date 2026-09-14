@@ -190,7 +190,7 @@ The translator loader now fails fast on bundle errors — bad YAML crashes start
 - **Site role only escalates** — a user's per-site role takes effect only when it is more privileged than the global role; a site role cannot demote a global admin. By design (network admin overrides everywhere), but worth noting.
 - **Uploads are not site-partitioned** — one physical `/uploads/` tree serves all sub-sites (hashed filenames, public assets). `file_record` rows are site-stamped; the files are not.
 - **Badge awards are global** — one achievement set per person; `badge_award.site_id` is vestigial and threshold rules (e.g. "10 accepted answers") count across all sites, like reputation.
-- **`Site.base_url` is stored but unused** — the resolver matches subdomains heuristically and the UI switchers, cross-site search links and OIDC landing all assume path routing under `/s/<slug>`. A sub-site on its own host needs a shared URL helper first.
+- **`Site.base_url` is honored for links, not for resolution** — the UI builds every cross-site URL through `siteURL()` (`ui/src/utils/siteUrl.ts`) and the OIDC landing looks the site up, so a sub-site with an admin-set base URL is linked at that host. Resolving a request to that site still relies on the subdomain heuristic (first host label = slug); a base URL whose host label is not the slug will not resolve.
 - **Single-instance state** — site routing reads an in-process slug→id map refreshed only by the instance that handled the admin change, and the fastgate connector keeps its in-flight login records in memory. Run one replica.
 
 ## Future: Plugin Page Framework

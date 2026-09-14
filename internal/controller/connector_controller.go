@@ -20,8 +20,10 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"github.com/apache/answer/internal/multisite"
+	"github.com/apache/answer/internal/service/site"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -46,6 +48,7 @@ const (
 
 // ConnectorController comment controller
 type ConnectorController struct {
+	siteRepo            site.SiteRepo
 	siteInfoService     siteinfo_common.SiteInfoCommonService
 	userExternalService *user_external_login.UserExternalLoginService
 	emailService        *export.EmailService
@@ -56,8 +59,10 @@ func NewConnectorController(
 	siteInfoService siteinfo_common.SiteInfoCommonService,
 	emailService *export.EmailService,
 	userExternalService *user_external_login.UserExternalLoginService,
+	siteRepo site.SiteRepo,
 ) *ConnectorController {
 	return &ConnectorController{
+		siteRepo:            siteRepo,
 		siteInfoService:     siteInfoService,
 		userExternalService: userExternalService,
 		emailService:        emailService,
@@ -194,7 +199,7 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		// on. Identity is global, so the login itself is site-agnostic.
 		landing := siteGeneral.SiteUrl
 		if stateInfo != nil {
-			landing = siteLandingURL(siteGeneral.SiteUrl, stateInfo.SiteSlug)
+			landing = cc.landingURL(ctx, siteGeneral.SiteUrl, stateInfo.SiteSlug)
 		}
 		if stateInfo != nil && stateInfo.Intent == schema.ExternalLoginOAuthStateBindIntent {
 			if err = cc.userExternalService.BindExternalLoginToUser(ctx, stateInfo.UserID, u); err != nil {
@@ -367,6 +372,21 @@ func validSiteSlug(slug string) string {
 		return ""
 	}
 	return slug
+}
+
+// landingURL is siteLandingURL informed by the site row: a sub-site with an
+// admin-set base_url (its own host) lands there instead of the path prefix.
+// Lookup failures fall back to the path form rather than failing the login.
+func (cc *ConnectorController) landingURL(ctx context.Context, siteURL, slug string) string {
+	if slug = validSiteSlug(slug); slug != "" && cc.siteRepo != nil {
+		s, exist, err := cc.siteRepo.GetSiteBySlug(ctx, slug)
+		if err != nil {
+			log.Errorf("site lookup for %q failed, landing on the path form: %v", slug, err)
+		} else if exist && strings.TrimSpace(s.BaseURL) != "" {
+			return strings.TrimRight(strings.TrimSpace(s.BaseURL), "/")
+		}
+	}
+	return siteLandingURL(siteURL, slug)
 }
 
 // siteLandingURL is where a browser flow that started on slug should land:

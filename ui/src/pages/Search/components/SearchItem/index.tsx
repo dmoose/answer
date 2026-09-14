@@ -34,6 +34,7 @@ import Pattern from '@/common/pattern';
 import type { SearchResItem } from '@/common/interface';
 import { escapeRemove } from '@/utils';
 import currentSiteStore from '@/stores/currentSite';
+import { siteURL } from '@/utils/siteUrl';
 
 interface Props {
   data: SearchResItem;
@@ -61,9 +62,9 @@ const Index: FC<Props> = ({ data }) => {
   }
   // Cross-site results must leave the current router basename: build a full
   // URL on the owning site so the link doesn't resolve inside this site's
-  // /s/<slug> prefix and 404.
+  // prefix and 404.
   if (resultSite) {
-    itemUrl = `${window.location.origin}/s/${resultSite.slug}${itemUrl}`;
+    itemUrl = siteURL(resultSite, itemUrl);
   }
 
   const [searchParams] = useSearchParams();

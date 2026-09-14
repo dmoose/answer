@@ -150,5 +150,13 @@ module.exports = {
       ];
       return config;
     };
-  }
+  },
+  // Jest resolves the same "@" alias webpack does.
+  jest: function(config) {
+    config.moduleNameMapper = {
+      ...(config.moduleNameMapper || {}),
+      "^@/(.*)$": "<rootDir>/src/$1",
+    };
+    return config;
+  },
 };

@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Icon } from '@/components';
 import currentSiteStore from '@/stores/currentSite';
+import { siteURL } from '@/utils/siteUrl';
 
 import './index.scss';
 
@@ -38,10 +39,9 @@ const SiteContextPicker: FC = () => {
   }
 
   const handleSelect = (slug: string) => {
-    if (slug === 'default') {
-      window.location.href = '/';
-    } else {
-      window.location.href = `/s/${slug}`;
+    const target = sites.find((s) => s.slug === slug);
+    if (target) {
+      window.location.href = siteURL(target);
     }
   };
 
