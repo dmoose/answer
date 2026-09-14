@@ -66,6 +66,7 @@ func presentationSiteCtx(ctx *gin.Context) context.Context {
 // @Tags admin
 // @Produce json
 // @Success 200 {object} handler.RespBody{data=schema.SiteGeneralResp}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/general [get]
 func (sc *SiteInfoController) GetGeneral(ctx *gin.Context) {
 	resp, err := sc.siteInfoService.GetSiteGeneral(presentationSiteCtx(ctx))
@@ -105,6 +106,7 @@ func (sc *SiteInfoController) GetUsersSettings(ctx *gin.Context) {
 // @Tags admin
 // @Produce json
 // @Success 200 {object} handler.RespBody{data=schema.SiteBrandingResp}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/branding [get]
 func (sc *SiteInfoController) GetSiteBranding(ctx *gin.Context) {
 	resp, err := sc.siteInfoService.GetSiteBranding(presentationSiteCtx(ctx))
@@ -209,6 +211,7 @@ func (sc *SiteInfoController) GetSiteLogin(ctx *gin.Context) {
 // @Tags admin
 // @Produce json
 // @Success 200 {object} handler.RespBody{data=schema.SiteCustomCssHTMLResp}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/custom-css-html [get]
 func (sc *SiteInfoController) GetSiteCustomCssHTML(ctx *gin.Context) {
 	resp, err := sc.siteInfoService.GetSiteCustomCssHTML(presentationSiteCtx(ctx))
@@ -300,6 +303,7 @@ func (sc *SiteInfoController) UpdateSeo(ctx *gin.Context) {
 // @Produce json
 // @Param data body schema.SiteGeneralReq true "general"
 // @Success 200 {object} handler.RespBody{}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/general [put]
 func (sc *SiteInfoController) UpdateGeneral(ctx *gin.Context) {
 	req := schema.SiteGeneralReq{}
@@ -355,6 +359,7 @@ func (sc *SiteInfoController) UpdateUsersSettings(ctx *gin.Context) {
 // @Produce json
 // @Param data body schema.SiteBrandingReq true "branding info"
 // @Success 200 {object} handler.RespBody{}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/branding [put]
 func (sc *SiteInfoController) UpdateBranding(ctx *gin.Context) {
 	req := &schema.SiteBrandingReq{}
@@ -501,6 +506,7 @@ func (sc *SiteInfoController) UpdateSiteLogin(ctx *gin.Context) {
 // @Produce json
 // @Param data body schema.SiteCustomCssHTMLReq true "login info"
 // @Success 200 {object} handler.RespBody{}
+// @Param site_id query string false "sub-site id to read/write its override; omit for the global default"
 // @Router /answer/admin/api/siteinfo/custom-css-html [put]
 func (sc *SiteInfoController) UpdateSiteCustomCssHTML(ctx *gin.Context) {
 	req := &schema.SiteCustomCssHTMLReq{}

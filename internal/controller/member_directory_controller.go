@@ -86,6 +86,13 @@ func (mc *MemberDirectoryController) blockedByVisibility(ctx *gin.Context) bool 
 
 // ListTags returns the active tag catalog. Optional `kind` query (1=skill,
 // 2=interest, 3=both) narrows the list for the picker UIs.
+// @Summary list active profile tags
+// @Description list the curated skill/interest tag catalog
+// @Tags NetworkDirectory
+// @Produce json
+// @Param kind query int false "1=skill, 2=interest, 3=both"
+// @Success 200 {object} handler.RespBody{data=[]schema.ProfileTagInfo}
+// @Router /answer/api/v1/network/tags [get]
 func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
 	if mc.disabled(ctx) || mc.blockedByVisibility(ctx) {
 		return
@@ -104,6 +111,15 @@ func (mc *MemberDirectoryController) ListTags(ctx *gin.Context) {
 }
 
 // ListMembers runs the faceted directory query and returns a page of cards.
+// @Summary search the member directory
+// @Description faceted member search; members-only unless directory_visibility is public
+// @Tags NetworkDirectory
+// @Produce json
+// @Param q query string false "text query"
+// @Param page query int false "page"
+// @Param page_size query int false "page size"
+// @Success 200 {object} handler.RespBody{data=pager.PageModel{list=[]schema.DirectoryMember}}
+// @Router /answer/api/v1/network/members [get]
 func (mc *MemberDirectoryController) ListMembers(ctx *gin.Context) {
 	if mc.disabled(ctx) || mc.blockedByVisibility(ctx) {
 		return
@@ -116,6 +132,16 @@ func (mc *MemberDirectoryController) ListMembers(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, resp)
 }
 
+// UpdateProfile update the caller's network profile
+// @Summary update the caller's network profile
+// @Description update the extended directory profile of the logged-in user
+// @Security ApiKeyAuth
+// @Tags NetworkDirectory
+// @Accept json
+// @Produce json
+// @Param data body schema.NetworkProfileUpdateReq true "profile"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/api/v1/network/profile [put]
 func (mc *MemberDirectoryController) UpdateProfile(ctx *gin.Context) {
 	if mc.disabled(ctx) {
 		return
@@ -129,6 +155,16 @@ func (mc *MemberDirectoryController) UpdateProfile(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, nil)
 }
 
+// SetTags replace the caller's profile tags
+// @Summary replace the caller's profile tags
+// @Description replace the logged-in user's skill/interest tags
+// @Security ApiKeyAuth
+// @Tags NetworkDirectory
+// @Accept json
+// @Produce json
+// @Param data body schema.NetworkSetProfileTagsReq true "tags"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/api/v1/network/me/tags [put]
 func (mc *MemberDirectoryController) SetTags(ctx *gin.Context) {
 	if mc.disabled(ctx) {
 		return
@@ -142,6 +178,16 @@ func (mc *MemberDirectoryController) SetTags(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, nil)
 }
 
+// CreateProject add a project to the caller's profile
+// @Summary add a project to the caller's profile
+// @Description add a project-in-progress to the logged-in user's profile
+// @Security ApiKeyAuth
+// @Tags NetworkDirectory
+// @Accept json
+// @Produce json
+// @Param data body schema.NetworkProjectCreateReq true "project"
+// @Success 200 {object} handler.RespBody{data=schema.ProfileProjectInfo}
+// @Router /answer/api/v1/network/projects [post]
 func (mc *MemberDirectoryController) CreateProject(ctx *gin.Context) {
 	if mc.disabled(ctx) {
 		return
@@ -155,6 +201,17 @@ func (mc *MemberDirectoryController) CreateProject(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, resp)
 }
 
+// UpdateProject update one of the caller's projects
+// @Summary update one of the caller's projects
+// @Description update a project on the logged-in user's profile
+// @Security ApiKeyAuth
+// @Tags NetworkDirectory
+// @Accept json
+// @Produce json
+// @Param id path string true "project id"
+// @Param data body schema.NetworkProjectUpdateReq true "project"
+// @Success 200 {object} handler.RespBody{data=schema.ProfileProjectInfo}
+// @Router /answer/api/v1/network/projects/{id} [put]
 func (mc *MemberDirectoryController) UpdateProject(ctx *gin.Context) {
 	if mc.disabled(ctx) {
 		return
@@ -169,6 +226,15 @@ func (mc *MemberDirectoryController) UpdateProject(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, resp)
 }
 
+// DeleteProject remove one of the caller's projects
+// @Summary remove one of the caller's projects
+// @Description remove a project from the logged-in user's profile
+// @Security ApiKeyAuth
+// @Tags NetworkDirectory
+// @Produce json
+// @Param id path string true "project id"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/api/v1/network/projects/{id} [delete]
 func (mc *MemberDirectoryController) DeleteProject(ctx *gin.Context) {
 	if mc.disabled(ctx) {
 		return

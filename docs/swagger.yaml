@@ -43,6 +43,27 @@ definitions:
     - BadgeLevelBronze
     - BadgeLevelSilver
     - BadgeLevelGold
+  entity.Site:
+    properties:
+      base_url:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      status:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   handler.RespBody:
     properties:
       code:
@@ -439,6 +460,49 @@ definitions:
         description: users info line by line
         type: string
     type: object
+  schema.AdminProfileTagInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      kind:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
+      status:
+        type: integer
+    type: object
+  schema.AdminProfileTagUpsertReq:
+    properties:
+      description:
+        maxLength: 512
+        type: string
+      kind:
+        enum:
+        - 1
+        - 2
+        - 3
+        type: integer
+      name:
+        maxLength: 128
+        minLength: 1
+        type: string
+      slug:
+        maxLength: 64
+        minLength: 2
+        type: string
+      status:
+        enum:
+        - 1
+        - 9
+        type: integer
+    required:
+    - name
+    - slug
+    type: object
   schema.AdminUpdateAnswerStatusReq:
     properties:
       answer_id:
@@ -711,6 +775,35 @@ definitions:
         type: string
     required:
     - type
+    type: object
+  schema.DirectoryMember:
+    properties:
+      avatar:
+        type: string
+      display_name:
+        type: string
+      headline:
+        type: string
+      open_to_collaboration:
+        type: boolean
+      open_to_hire:
+        type: boolean
+      open_to_mentoring:
+        type: boolean
+      pronouns:
+        type: string
+      reputation:
+        type: integer
+      tags:
+        items:
+          $ref: '#/definitions/schema.ProfileTagInfo'
+        type: array
+      timezone:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
     type: object
   schema.EditUserProfileReq:
     properties:
@@ -1672,6 +1765,85 @@ definitions:
       text:
         type: string
     type: object
+  schema.NetworkProfileUpdateReq:
+    properties:
+      external_links:
+        items:
+          $ref: '#/definitions/schema.ProfileExternalLink'
+        maxItems: 10
+        type: array
+      headline:
+        maxLength: 255
+        type: string
+      open_to_collaboration:
+        type: boolean
+      open_to_hire:
+        type: boolean
+      open_to_mentoring:
+        type: boolean
+      pronouns:
+        maxLength: 64
+        type: string
+      timezone:
+        maxLength: 64
+        type: string
+    type: object
+  schema.NetworkProjectCreateReq:
+    properties:
+      description:
+        maxLength: 4000
+        type: string
+      repo_url:
+        maxLength: 512
+        type: string
+      seeking_help:
+        type: boolean
+      status:
+        enum:
+        - 1
+        - 2
+        - 9
+        type: integer
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+    required:
+    - title
+    type: object
+  schema.NetworkProjectUpdateReq:
+    properties:
+      description:
+        maxLength: 4000
+        type: string
+      repo_url:
+        maxLength: 512
+        type: string
+      seeking_help:
+        type: boolean
+      status:
+        enum:
+        - 1
+        - 2
+        - 9
+        type: integer
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+    required:
+    - title
+    type: object
+  schema.NetworkSetProfileTagsReq:
+    properties:
+      tag_ids:
+        items:
+          type: string
+        maxItems: 30
+        type: array
+    required:
+    - tag_ids
+    type: object
   schema.NotificationChannelConfig:
     properties:
       enable:
@@ -1772,6 +1944,48 @@ definitions:
         items:
           $ref: '#/definitions/constant.Privilege'
         type: array
+    type: object
+  schema.ProfileExternalLink:
+    properties:
+      label:
+        maxLength: 64
+        type: string
+      url:
+        maxLength: 512
+        type: string
+    required:
+    - label
+    - url
+    type: object
+  schema.ProfileProjectInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      repo_url:
+        type: string
+      seeking_help:
+        type: boolean
+      status:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  schema.ProfileTagInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      kind:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
     type: object
   schema.QuestionAdd:
     properties:
@@ -2316,6 +2530,20 @@ definitions:
       prompt_config:
         $ref: '#/definitions/schema.AIPromptConfig'
     type: object
+  schema.SiteAddReq:
+    properties:
+      base_url:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - slug
+    type: object
   schema.SiteAdvancedReq:
     properties:
       authorized_attachment_extensions:
@@ -2703,6 +2931,15 @@ definitions:
     - permalink
     - robots
     type: object
+  schema.SiteStatusReq:
+    properties:
+      active:
+        type: boolean
+      site_id:
+        type: string
+    required:
+    - site_id
+    type: object
   schema.SiteTagsReq:
     properties:
       recommend_tags:
@@ -2763,6 +3000,19 @@ definitions:
         items:
           $ref: '#/definitions/schema.ThemeOption'
         type: array
+    type: object
+  schema.SiteUserRoleReq:
+    properties:
+      role_id:
+        type: integer
+      site_id:
+        type: string
+      user_id:
+        type: string
+    required:
+    - role_id
+    - site_id
+    - user_id
     type: object
   schema.SiteUsersReq:
     properties:
@@ -3524,6 +3774,65 @@ definitions:
       votes:
         type: integer
     type: object
+  site.NetworkProfile:
+    properties:
+      avatar:
+        type: string
+      display_name:
+        type: string
+      external_links:
+        items:
+          $ref: '#/definitions/schema.ProfileExternalLink'
+        type: array
+      global_rank:
+        type: integer
+      headline:
+        type: string
+      open_to_collaboration:
+        type: boolean
+      open_to_hire:
+        type: boolean
+      open_to_mentoring:
+        type: boolean
+      projects:
+        items:
+          $ref: '#/definitions/schema.ProfileProjectInfo'
+        type: array
+      pronouns:
+        type: string
+      site_ranks:
+        items:
+          $ref: '#/definitions/site.NetworkProfileSiteRank'
+        type: array
+      tags:
+        items:
+          $ref: '#/definitions/schema.ProfileTagInfo'
+        type: array
+      timezone:
+        type: string
+      user_id:
+        type: string
+    type: object
+  site.NetworkProfileSiteRank:
+    properties:
+      rank:
+        type: integer
+      site_id:
+        type: string
+      site_name:
+        type: string
+      site_slug:
+        type: string
+    type: object
+  site.SiteUserRole:
+    properties:
+      role_id:
+        type: integer
+      site_id:
+        type: string
+      user_id:
+        type: string
+    type: object
   translator.LangOption:
     properties:
       label:
@@ -4041,6 +4350,90 @@ paths:
       summary: update MCP configuration
       tags:
       - admin
+  /answer/admin/api/network/tags:
+    get:
+      description: list the profile tag catalog including inactive entries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/schema.AdminProfileTagInfo'
+                  type: array
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: list all profile tags
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: add a curated tag to the profile tag catalog
+      parameters:
+      - description: tag
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.AdminProfileTagUpsertReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/schema.ProfileTagInfo'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: create a profile tag
+      tags:
+      - admin
+  /answer/admin/api/network/tags/{id}:
+    put:
+      consumes:
+      - application/json
+      description: update a profile tag's name, kind, description or status
+      parameters:
+      - description: tag id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: tag
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.AdminProfileTagUpsertReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/schema.ProfileTagInfo'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: update a profile tag
+      tags:
+      - admin
   /answer/admin/api/plugin/config:
     get:
       description: get plugin config
@@ -4352,6 +4745,163 @@ paths:
       summary: update smtp config
       tags:
       - admin
+  /answer/admin/api/site:
+    get:
+      description: get a sub-site by id
+      parameters:
+      - description: site id
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Site'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: get a sub-site by id
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: create a sub-site
+      parameters:
+      - description: site
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.SiteAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Site'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: create a sub-site
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: update a sub-site; empty status/slug fields leave the stored values
+        untouched
+      parameters:
+      - description: site
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Site'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: update a sub-site
+      tags:
+      - admin
+  /answer/admin/api/site/role:
+    get:
+      description: get a user's effective role on a sub-site
+      parameters:
+      - description: user id
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - description: site id
+        in: query
+        name: site_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/site.SiteUserRole'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: get a user's role on a sub-site
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: assign a user's role on a sub-site; a site role can raise but never
+        lower the global role
+      parameters:
+      - description: role assignment
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.SiteUserRoleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: assign a user's role on a sub-site
+      tags:
+      - admin
+  /answer/admin/api/site/status:
+    put:
+      consumes:
+      - application/json
+      description: activate or suspend a sub-site; the default site cannot be suspended
+      parameters:
+      - description: status
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.SiteStatusReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: activate or suspend a sub-site
+      tags:
+      - admin
   /answer/admin/api/siteinfo/advanced:
     get:
       description: get site advanced setting
@@ -4437,6 +4987,11 @@ paths:
   /answer/admin/api/siteinfo/branding:
     get:
       description: get site interface
+      parameters:
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4463,6 +5018,10 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/schema.SiteBrandingReq'
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4478,6 +5037,11 @@ paths:
   /answer/admin/api/siteinfo/custom-css-html:
     get:
       description: get site info custom html css config
+      parameters:
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4504,6 +5068,10 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/schema.SiteCustomCssHTMLReq'
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4519,6 +5087,11 @@ paths:
   /answer/admin/api/siteinfo/general:
     get:
       description: get site general information
+      parameters:
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4545,6 +5118,10 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/schema.SiteGeneralReq'
+      - description: sub-site id to read/write its override; omit for the global default
+        in: query
+        name: site_id
+        type: string
       produces:
       - application/json
       responses:
@@ -4965,6 +5542,28 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: update site info users settings
+      tags:
+      - admin
+  /answer/admin/api/sites:
+    get:
+      description: list all sub-sites, including suspended ones
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Site'
+                  type: array
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: list all sub-sites
       tags:
       - admin
   /answer/admin/api/theme/options:
@@ -6162,6 +6761,226 @@ paths:
       summary: add or update reaction
       tags:
       - Meta
+  /answer/api/v1/network/me/tags:
+    put:
+      consumes:
+      - application/json
+      description: replace the logged-in user's skill/interest tags
+      parameters:
+      - description: tags
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.NetworkSetProfileTagsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: replace the caller's profile tags
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/members:
+    get:
+      description: faceted member search; members-only unless directory_visibility
+        is public
+      parameters:
+      - description: text query
+        in: query
+        name: q
+        type: string
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/pager.PageModel'
+                  - properties:
+                      list:
+                        items:
+                          $ref: '#/definitions/schema.DirectoryMember'
+                        type: array
+                    type: object
+              type: object
+      summary: search the member directory
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/profile:
+    put:
+      consumes:
+      - application/json
+      description: update the extended directory profile of the logged-in user
+      parameters:
+      - description: profile
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.NetworkProfileUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: update the caller's network profile
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/projects:
+    post:
+      consumes:
+      - application/json
+      description: add a project-in-progress to the logged-in user's profile
+      parameters:
+      - description: project
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.NetworkProjectCreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/schema.ProfileProjectInfo'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: add a project to the caller's profile
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/projects/{id}:
+    delete:
+      description: remove a project from the logged-in user's profile
+      parameters:
+      - description: project id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RespBody'
+      security:
+      - ApiKeyAuth: []
+      summary: remove one of the caller's projects
+      tags:
+      - NetworkDirectory
+    put:
+      consumes:
+      - application/json
+      description: update a project on the logged-in user's profile
+      parameters:
+      - description: project id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: project
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/schema.NetworkProjectUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/schema.ProfileProjectInfo'
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: update one of the caller's projects
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/tags:
+    get:
+      description: list the curated skill/interest tag catalog
+      parameters:
+      - description: 1=skill, 2=interest, 3=both
+        in: query
+        name: kind
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/schema.ProfileTagInfo'
+                  type: array
+              type: object
+      summary: list active profile tags
+      tags:
+      - NetworkDirectory
+  /answer/api/v1/network/user/profile:
+    get:
+      description: reputation and activity across every sub-site; members-only when
+        the directory is not public
+      parameters:
+      - description: user id
+        in: query
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  $ref: '#/definitions/site.NetworkProfile'
+              type: object
+      summary: get a user's network-wide profile
+      tags:
+      - Site
   /answer/api/v1/notification/page:
     get:
       consumes:
@@ -7528,6 +8347,26 @@ paths:
       summary: get site legal info
       tags:
       - site
+  /answer/api/v1/sites:
+    get:
+      description: list active sub-sites for the site switcher
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handler.RespBody'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Site'
+                  type: array
+              type: object
+      summary: list active sub-sites
+      tags:
+      - Site
   /answer/api/v1/tag:
     delete:
       consumes:

@@ -23,6 +23,7 @@ import (
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"
 	"github.com/apache/answer/internal/entity"
+	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/site"
 	"github.com/gin-gonic/gin"
 )
@@ -42,13 +43,18 @@ func NewSiteAdminController(
 	}
 }
 
+// AddSite create a sub-site
+// @Summary create a sub-site
+// @Description create a sub-site
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param data body schema.SiteAddReq true "site"
+// @Success 200 {object} handler.RespBody{data=entity.Site}
+// @Router /answer/admin/api/site [post]
 func (sc *SiteAdminController) AddSite(ctx *gin.Context) {
-	req := &struct {
-		Name        string `json:"name" binding:"required"`
-		Slug        string `json:"slug" binding:"required"`
-		Description string `json:"description"`
-		BaseURL     string `json:"base_url"`
-	}{}
+	req := &schema.SiteAddReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
 	}
@@ -59,6 +65,16 @@ func (sc *SiteAdminController) AddSite(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, s)
 }
 
+// UpdateSite update a sub-site
+// @Summary update a sub-site
+// @Description update a sub-site; empty status/slug fields leave the stored values untouched
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param data body entity.Site true "site"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/admin/api/site [put]
 func (sc *SiteAdminController) UpdateSite(ctx *gin.Context) {
 	req := &entity.Site{}
 	if handler.BindAndCheck(ctx, req) {
@@ -71,12 +87,29 @@ func (sc *SiteAdminController) UpdateSite(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, nil)
 }
 
+// GetSite get a sub-site by id
+// @Summary get a sub-site by id
+// @Description get a sub-site by id
+// @Security ApiKeyAuth
+// @Tags admin
+// @Produce json
+// @Param id query string true "site id"
+// @Success 200 {object} handler.RespBody{data=entity.Site}
+// @Router /answer/admin/api/site [get]
 func (sc *SiteAdminController) GetSite(ctx *gin.Context) {
 	id := ctx.Query("id")
 	s, err := sc.siteService.GetSite(ctx, id)
 	handler.HandleResponse(ctx, err, s)
 }
 
+// GetSiteList list all sub-sites, including suspended ones
+// @Summary list all sub-sites
+// @Description list all sub-sites, including suspended ones
+// @Security ApiKeyAuth
+// @Tags admin
+// @Produce json
+// @Success 200 {object} handler.RespBody{data=[]entity.Site}
+// @Router /answer/admin/api/sites [get]
 func (sc *SiteAdminController) GetSiteList(ctx *gin.Context) {
 	// Admin listing includes suspended sites: a site that disappears from
 	// every list the moment it is suspended can never be reactivated.
@@ -84,12 +117,18 @@ func (sc *SiteAdminController) GetSiteList(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, sites)
 }
 
-// SetSiteStatus activates or suspends a sub-site.
+// SetSiteStatus activate or suspend a sub-site
+// @Summary activate or suspend a sub-site
+// @Description activate or suspend a sub-site; the default site cannot be suspended
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param data body schema.SiteStatusReq true "status"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/admin/api/site/status [put]
 func (sc *SiteAdminController) SetSiteStatus(ctx *gin.Context) {
-	req := &struct {
-		SiteID string `json:"site_id" binding:"required"`
-		Active bool   `json:"active"`
-	}{}
+	req := &schema.SiteStatusReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
 	}
@@ -100,12 +139,18 @@ func (sc *SiteAdminController) SetSiteStatus(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, nil)
 }
 
+// SetUserSiteRole assign a user's role on a sub-site
+// @Summary assign a user's role on a sub-site
+// @Description assign a user's role on a sub-site; a site role can raise but never lower the global role
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param data body schema.SiteUserRoleReq true "role assignment"
+// @Success 200 {object} handler.RespBody
+// @Router /answer/admin/api/site/role [put]
 func (sc *SiteAdminController) SetUserSiteRole(ctx *gin.Context) {
-	req := &struct {
-		UserID string `json:"user_id" binding:"required"`
-		SiteID string `json:"site_id" binding:"required"`
-		RoleID int    `json:"role_id" binding:"required"`
-	}{}
+	req := &schema.SiteUserRoleReq{}
 	if handler.BindAndCheck(ctx, req) {
 		return
 	}
@@ -113,6 +158,16 @@ func (sc *SiteAdminController) SetUserSiteRole(ctx *gin.Context) {
 	handler.HandleResponse(ctx, err, nil)
 }
 
+// GetUserSiteRole get a user's effective role on a sub-site
+// @Summary get a user's role on a sub-site
+// @Description get a user's effective role on a sub-site
+// @Security ApiKeyAuth
+// @Tags admin
+// @Produce json
+// @Param user_id query string true "user id"
+// @Param site_id query string true "site id"
+// @Success 200 {object} handler.RespBody{data=site.SiteUserRole}
+// @Router /answer/admin/api/site/role [get]
 func (sc *SiteAdminController) GetUserSiteRole(ctx *gin.Context) {
 	userID := ctx.Query("user_id")
 	siteID := ctx.Query("site_id")

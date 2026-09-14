@@ -877,6 +877,153 @@ const docTemplate = `{
                 }
             }
         },
+        "/answer/admin/api/network/tags": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "list the profile tag catalog including inactive entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "list all profile tags",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/schema.AdminProfileTagInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "add a curated tag to the profile tag catalog",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "create a profile tag",
+                "parameters": [
+                    {
+                        "description": "tag",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.AdminProfileTagUpsertReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/schema.ProfileTagInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/admin/api/network/tags/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "update a profile tag's name, kind, description or status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "update a profile tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "tag id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "tag",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.AdminProfileTagUpsertReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/schema.ProfileTagInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/answer/admin/api/plugin/config": {
             "get": {
                 "security": [
@@ -1393,6 +1540,267 @@ const docTemplate = `{
                 }
             }
         },
+        "/answer/admin/api/site": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "get a sub-site by id",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "get a sub-site by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "site id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Site"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "update a sub-site; empty status/slug fields leave the stored values untouched",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "update a sub-site",
+                "parameters": [
+                    {
+                        "description": "site",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.Site"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "create a sub-site",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "create a sub-site",
+                "parameters": [
+                    {
+                        "description": "site",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.SiteAddReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Site"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/admin/api/site/role": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "get a user's effective role on a sub-site",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "get a user's role on a sub-site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "site id",
+                        "name": "site_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/site.SiteUserRole"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "assign a user's role on a sub-site; a site role can raise but never lower the global role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "assign a user's role on a sub-site",
+                "parameters": [
+                    {
+                        "description": "role assignment",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.SiteUserRoleReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/admin/api/site/status": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "activate or suspend a sub-site; the default site cannot be suspended",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "activate or suspend a sub-site",
+                "parameters": [
+                    {
+                        "description": "status",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.SiteStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
         "/answer/admin/api/siteinfo/advanced": {
             "get": {
                 "security": [
@@ -1550,6 +1958,14 @@ const docTemplate = `{
                     "admin"
                 ],
                 "summary": "get site interface",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1594,6 +2010,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/schema.SiteBrandingReq"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1621,6 +2043,14 @@ const docTemplate = `{
                     "admin"
                 ],
                 "summary": "get site info custom html css config",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1665,6 +2095,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/schema.SiteCustomCssHTMLReq"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1692,6 +2128,14 @@ const docTemplate = `{
                     "admin"
                 ],
                 "summary": "get site general information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1736,6 +2180,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/schema.SiteGeneralReq"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "sub-site id to read/write its override; omit for the global default",
+                        "name": "site_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2453,6 +2903,46 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/admin/api/sites": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "list all sub-sites, including suspended ones",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "list all sub-sites",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Site"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -4445,6 +4935,376 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/me/tags": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "replace the logged-in user's skill/interest tags",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "replace the caller's profile tags",
+                "parameters": [
+                    {
+                        "description": "tags",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.NetworkSetProfileTagsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/members": {
+            "get": {
+                "description": "faceted member search; members-only unless directory_visibility is public",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "search the member directory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "text query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/pager.PageModel"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "list": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/schema.DirectoryMember"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/profile": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "update the extended directory profile of the logged-in user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "update the caller's network profile",
+                "parameters": [
+                    {
+                        "description": "profile",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.NetworkProfileUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/projects": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "add a project-in-progress to the logged-in user's profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "add a project to the caller's profile",
+                "parameters": [
+                    {
+                        "description": "project",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.NetworkProjectCreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/schema.ProfileProjectInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/projects/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "update a project on the logged-in user's profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "update one of the caller's projects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "project",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.NetworkProjectUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/schema.ProfileProjectInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "remove a project from the logged-in user's profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "remove one of the caller's projects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RespBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/tags": {
+            "get": {
+                "description": "list the curated skill/interest tag catalog",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NetworkDirectory"
+                ],
+                "summary": "list active profile tags",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "1=skill, 2=interest, 3=both",
+                        "name": "kind",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/schema.ProfileTagInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/answer/api/v1/network/user/profile": {
+            "get": {
+                "description": "reputation and activity across every sub-site; members-only when the directory is not public",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Site"
+                ],
+                "summary": "get a user's network-wide profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/site.NetworkProfile"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -6692,6 +7552,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/answer/api/v1/sites": {
+            "get": {
+                "description": "list active sub-sites for the site switcher",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Site"
+                ],
+                "summary": "list active sub-sites",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handler.RespBody"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Site"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/answer/api/v1/tag": {
             "get": {
                 "description": "get tag one",
@@ -8580,6 +9475,38 @@ const docTemplate = `{
                 "BadgeLevelGold"
             ]
         },
+        "entity.Site": {
+            "type": "object",
+            "properties": {
+                "base_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.RespBody": {
             "type": "object",
             "properties": {
@@ -9158,6 +10085,67 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.AdminProfileTagInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
+        "schema.AdminProfileTagUpsertReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 512
+                },
+                "kind": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2,
+                        3
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 2
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        9
+                    ]
+                }
+            }
+        },
         "schema.AdminUpdateAnswerStatusReq": {
             "type": "object",
             "required": [
@@ -9560,6 +10548,50 @@ const docTemplate = `{
                         "questions",
                         "answers"
                     ]
+                }
+            }
+        },
+        "schema.DirectoryMember": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "headline": {
+                    "type": "string"
+                },
+                "open_to_collaboration": {
+                    "type": "boolean"
+                },
+                "open_to_hire": {
+                    "type": "boolean"
+                },
+                "open_to_mentoring": {
+                    "type": "boolean"
+                },
+                "pronouns": {
+                    "type": "string"
+                },
+                "reputation": {
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.ProfileTagInfo"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -10932,6 +11964,118 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.NetworkProfileUpdateReq": {
+            "type": "object",
+            "properties": {
+                "external_links": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                        "$ref": "#/definitions/schema.ProfileExternalLink"
+                    }
+                },
+                "headline": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "open_to_collaboration": {
+                    "type": "boolean"
+                },
+                "open_to_hire": {
+                    "type": "boolean"
+                },
+                "open_to_mentoring": {
+                    "type": "boolean"
+                },
+                "pronouns": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "timezone": {
+                    "type": "string",
+                    "maxLength": 64
+                }
+            }
+        },
+        "schema.NetworkProjectCreateReq": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 4000
+                },
+                "repo_url": {
+                    "type": "string",
+                    "maxLength": 512
+                },
+                "seeking_help": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2,
+                        9
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                }
+            }
+        },
+        "schema.NetworkProjectUpdateReq": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 4000
+                },
+                "repo_url": {
+                    "type": "string",
+                    "maxLength": 512
+                },
+                "seeking_help": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2,
+                        9
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1
+                }
+            }
+        },
+        "schema.NetworkSetProfileTagsReq": {
+            "type": "object",
+            "required": [
+                "tag_ids"
+            ],
+            "properties": {
+                "tag_ids": {
+                    "type": "array",
+                    "maxItems": 30,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "schema.NotificationChannelConfig": {
             "type": "object",
             "properties": {
@@ -11078,6 +12222,69 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/constant.Privilege"
                     }
+                }
+            }
+        },
+        "schema.ProfileExternalLink": {
+            "type": "object",
+            "required": [
+                "label",
+                "url"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "url": {
+                    "type": "string",
+                    "maxLength": 512
+                }
+            }
+        },
+        "schema.ProfileProjectInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "seeking_help": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "schema.ProfileTagInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },
@@ -11871,6 +13078,27 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.SiteAddReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "base_url": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "schema.SiteAdvancedReq": {
             "type": "object",
             "properties": {
@@ -12437,6 +13665,20 @@ const docTemplate = `{
                 }
             }
         },
+        "schema.SiteStatusReq": {
+            "type": "object",
+            "required": [
+                "site_id"
+            ],
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "site_id": {
+                    "type": "string"
+                }
+            }
+        },
         "schema.SiteTagsReq": {
             "type": "object",
             "properties": {
@@ -12525,6 +13767,25 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/schema.ThemeOption"
                     }
+                }
+            }
+        },
+        "schema.SiteUserRoleReq": {
+            "type": "object",
+            "required": [
+                "role_id",
+                "site_id",
+                "user_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -13611,6 +14872,96 @@ const docTemplate = `{
                 },
                 "votes": {
                     "type": "integer"
+                }
+            }
+        },
+        "site.NetworkProfile": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "external_links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.ProfileExternalLink"
+                    }
+                },
+                "global_rank": {
+                    "type": "integer"
+                },
+                "headline": {
+                    "type": "string"
+                },
+                "open_to_collaboration": {
+                    "type": "boolean"
+                },
+                "open_to_hire": {
+                    "type": "boolean"
+                },
+                "open_to_mentoring": {
+                    "type": "boolean"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.ProfileProjectInfo"
+                    }
+                },
+                "pronouns": {
+                    "type": "string"
+                },
+                "site_ranks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/site.NetworkProfileSiteRank"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schema.ProfileTagInfo"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "site.NetworkProfileSiteRank": {
+            "type": "object",
+            "properties": {
+                "rank": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
+                },
+                "site_slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "site.SiteUserRole": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },

@@ -53,6 +53,13 @@ func (pc *ProfileTagAdminController) disabled(ctx *gin.Context) bool {
 }
 
 // ListTags returns the full tag catalog, including inactive entries.
+// @Summary list all profile tags
+// @Description list the profile tag catalog including inactive entries
+// @Security ApiKeyAuth
+// @Tags admin
+// @Produce json
+// @Success 200 {object} handler.RespBody{data=[]schema.AdminProfileTagInfo}
+// @Router /answer/admin/api/network/tags [get]
 func (pc *ProfileTagAdminController) ListTags(ctx *gin.Context) {
 	if pc.disabled(ctx) {
 		return
@@ -62,6 +69,15 @@ func (pc *ProfileTagAdminController) ListTags(ctx *gin.Context) {
 }
 
 // CreateTag adds a curated tag to the profile tag catalog.
+// @Summary create a profile tag
+// @Description add a curated tag to the profile tag catalog
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param data body schema.AdminProfileTagUpsertReq true "tag"
+// @Success 200 {object} handler.RespBody{data=schema.ProfileTagInfo}
+// @Router /answer/admin/api/network/tags [post]
 func (pc *ProfileTagAdminController) CreateTag(ctx *gin.Context) {
 	if pc.disabled(ctx) {
 		return
@@ -76,6 +92,16 @@ func (pc *ProfileTagAdminController) CreateTag(ctx *gin.Context) {
 }
 
 // UpdateTag updates an existing tag (name, kind, description, status).
+// @Summary update a profile tag
+// @Description update a profile tag's name, kind, description or status
+// @Security ApiKeyAuth
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param id path string true "tag id"
+// @Param data body schema.AdminProfileTagUpsertReq true "tag"
+// @Success 200 {object} handler.RespBody{data=schema.ProfileTagInfo}
+// @Router /answer/admin/api/network/tags/{id} [put]
 func (pc *ProfileTagAdminController) UpdateTag(ctx *gin.Context) {
 	if pc.disabled(ctx) {
 		return

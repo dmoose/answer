@@ -47,11 +47,26 @@ func NewSiteController(
 	}
 }
 
+// GetSiteList list active sub-sites
+// @Summary list active sub-sites
+// @Description list active sub-sites for the site switcher
+// @Tags Site
+// @Produce json
+// @Success 200 {object} handler.RespBody{data=[]entity.Site}
+// @Router /answer/api/v1/sites [get]
 func (sc *SiteController) GetSiteList(ctx *gin.Context) {
 	sites, err := sc.siteService.GetAllSites(ctx)
 	handler.HandleResponse(ctx, err, sites)
 }
 
+// GetNetworkProfile get a user's network-wide profile
+// @Summary get a user's network-wide profile
+// @Description reputation and activity across every sub-site; members-only when the directory is not public
+// @Tags Site
+// @Produce json
+// @Param user_id query string true "user id"
+// @Success 200 {object} handler.RespBody{data=site.NetworkProfile}
+// @Router /answer/api/v1/network/user/profile [get]
 func (sc *SiteController) GetNetworkProfile(ctx *gin.Context) {
 	userID := ctx.Query("user_id")
 	if userID == "" {

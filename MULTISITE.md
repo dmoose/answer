@@ -112,6 +112,8 @@ GET /answer/api/v1/sites                          — list active sites
 GET /answer/api/v1/network/user/profile?user_id=  — cross-site reputation
 ```
 
+Every fork route, and the `site_id` parameter on the per-site presentation endpoints, is annotated and present in `docs/swagger.*` (Swagger UI at `/swagger/index.html` when `swaggerui.show` is on).
+
 ## Frontend
 
 - **Site context picker** — card-style block at the top of the desktop left nav (icon + site name + chevron; descriptions only in the open dropdown). Hidden when only one site exists. The legacy header dropdown is preserved for mobile via `.d-lg-none`.
@@ -209,6 +211,11 @@ This pattern allows plugins to add full pages (member directory, resource librar
 go build ./...
 go vet ./...
 go test ./...
+
+# Regenerate the injector and the Swagger spec (wire v0.7.0 is the first
+# release that builds on current Go; both tools strip the ASF license
+# header from their output, so restore it before committing)
+make generate
 
 # Postgres migration tests (skipped without the DSN; the database is wiped)
 docker run -d --name answer-pg -e POSTGRES_USER=answer -e POSTGRES_PASSWORD=answer -e POSTGRES_DB=answer -p 127.0.0.1:55432:5432 postgres:16-alpine
