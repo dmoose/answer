@@ -201,7 +201,9 @@ func siteNotFound(ctx *gin.Context, path string) {
 	if file, err := ui.Build.ReadFile("build/index.html"); err == nil {
 		ctx.Data(http.StatusNotFound, "text/html;charset=utf-8", file)
 	} else {
-		ctx.Status(http.StatusNotFound)
+		// No embedded UI build (tests, bare API deployments): still a
+		// written 404, never an implicit 200.
+		ctx.Data(http.StatusNotFound, "text/plain;charset=utf-8", []byte("site not found"))
 	}
 	ctx.Abort()
 }

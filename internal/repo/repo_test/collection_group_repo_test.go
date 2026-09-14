@@ -36,7 +36,7 @@ func Test_collectionGroupRepo_DefaultGroupIsGlobal(t *testing.T) {
 
 	created, err := repo.CreateDefaultGroupIfNotExist(siteCtx(siteA), userID)
 	require.NoError(t, err)
-	assert.Equal(t, "", created.SiteID, "no site stamp on a global row")
+	assert.Empty(t, created.SiteID, "no site stamp on a global row")
 
 	again, err := repo.CreateDefaultGroupIfNotExist(siteCtx(siteB), userID)
 	require.NoError(t, err)

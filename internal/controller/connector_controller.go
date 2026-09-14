@@ -22,12 +22,13 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/apache/answer/internal/multisite"
-	"github.com/apache/answer/internal/service/site"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/apache/answer/internal/multisite"
+	"github.com/apache/answer/internal/service/site"
 
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"

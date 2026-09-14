@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -187,12 +188,7 @@ func (a *audienceClaim) UnmarshalJSON(b []byte) error {
 }
 
 func (a audienceClaim) contains(aud string) bool {
-	for _, v := range a {
-		if v == aud {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a, aud)
 }
 
 // verifyIDToken checks the compact JWT's EdDSA signature against the

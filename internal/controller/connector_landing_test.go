@@ -80,9 +80,9 @@ func TestSiteLandingURL(t *testing.T) {
 }
 
 func TestValidSiteSlug(t *testing.T) {
-	assert.Equal(t, "", validSiteSlug(""))
-	assert.Equal(t, "", validSiteSlug("default"))
+	assert.Empty(t, validSiteSlug(""))
+	assert.Empty(t, validSiteSlug("default"))
 	assert.Equal(t, "go-lang_2", validSiteSlug("go-lang_2"))
-	assert.Equal(t, "", validSiteSlug("-leading"))
-	assert.Equal(t, "", validSiteSlug("x/y"))
+	assert.Empty(t, validSiteSlug("-leading"))
+	assert.Empty(t, validSiteSlug("x/y"))
 }

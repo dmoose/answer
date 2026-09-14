@@ -227,7 +227,7 @@ func Test_pluginConfigRepo_AlwaysWritesGlobal(t *testing.T) {
 	all, err := repo.GetPluginConfigAll(context.Background())
 	require.NoError(t, err)
 	for _, c := range all {
-		assert.Equal(t, "", c.SiteID, "GetPluginConfigAll must return global rows only (got slug=%q site_id=%q)", c.PluginSlugName, c.SiteID)
+		assert.Empty(t, c.SiteID, "GetPluginConfigAll must return global rows only (got slug=%q site_id=%q)", c.PluginSlugName, c.SiteID)
 	}
 }
 

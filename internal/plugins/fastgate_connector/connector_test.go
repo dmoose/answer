@@ -75,7 +75,10 @@ func newStubIdP(t *testing.T) *stubIdP {
 		}}})
 	})
 	mux.HandleFunc("POST /token", func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseForm())
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		s.lastTokenRequest = r.PostForm
 		if s.expectedCV != "" && r.PostForm.Get("code_verifier") != s.expectedCV {
 			w.WriteHeader(http.StatusBadRequest)
@@ -168,13 +171,14 @@ func startLogin(t *testing.T, c *Connector) (params url.Values, bindCookie *http
 }
 
 // callback drives ConnectorReceiver with the given state and cookie.
-func callback(c *Connector, state string, cookie *http.Cookie) (userInfo any, err error) {
+func callback(c *Connector, state string, cookie *http.Cookie) error {
 	req := httptest.NewRequest("GET", "http://answer.example/receiver?code=abc&state="+url.QueryEscape(state), nil)
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
 	ctx, _ := ginCtx(req)
-	return c.ConnectorReceiver(ctx, "http://answer.example/receiver")
+	_, err := c.ConnectorReceiver(ctx, "http://answer.example/receiver")
+	return err
 }
 
 func TestSenderIssuesFreshStateNoncePKCE(t *testing.T) {
@@ -199,18 +203,18 @@ func TestReceiverRejectsMissingUnknownReplayedState(t *testing.T) {
 	params, cookie := startLogin(t, c)
 	stubNonce = params.Get("nonce")
 
-	_, err := callback(c, "", cookie)
-	assert.ErrorContains(t, err, "missing state")
+	err := callback(c, "", cookie)
+	require.ErrorContains(t, err, "missing state")
 
-	_, err = callback(c, "never-issued", cookie)
-	assert.ErrorContains(t, err, "state")
+	err = callback(c, "never-issued", cookie)
+	require.ErrorContains(t, err, "state")
 
 	// Legitimate use consumes the state...
-	_, err = callback(c, params.Get("state"), cookie)
+	err = callback(c, params.Get("state"), cookie)
 	require.NoError(t, err)
 	// ...and a replay of the same callback is rejected.
-	_, err = callback(c, params.Get("state"), cookie)
-	assert.ErrorContains(t, err, "replayed")
+	err = callback(c, params.Get("state"), cookie)
+	require.ErrorContains(t, err, "replayed")
 }
 
 func TestReceiverRejectsWrongBrowser(t *testing.T) {
@@ -220,14 +224,14 @@ func TestReceiverRejectsWrongBrowser(t *testing.T) {
 	stubNonce = params.Get("nonce")
 
 	// No cookie at all (e.g. victim's browser hit with attacker's URL).
-	_, err := callback(c, params.Get("state"), nil)
-	assert.ErrorContains(t, err, "not bound to this browser")
+	err := callback(c, params.Get("state"), nil)
+	require.ErrorContains(t, err, "not bound to this browser")
 
 	// Wrong cookie value.
 	params2, _ := startLogin(t, c)
 	stubNonce = params2.Get("nonce")
-	_, err = callback(c, params2.Get("state"), &http.Cookie{Name: bindCookieName, Value: "forged"})
-	assert.ErrorContains(t, err, "not bound to this browser")
+	err = callback(c, params2.Get("state"), &http.Cookie{Name: bindCookieName, Value: "forged"})
+	require.ErrorContains(t, err, "not bound to this browser")
 }
 
 func TestReceiverSendsPKCEVerifier(t *testing.T) {
@@ -236,7 +240,7 @@ func TestReceiverSendsPKCEVerifier(t *testing.T) {
 	params, cookie := startLogin(t, c)
 	stubNonce = params.Get("nonce")
 
-	_, err := callback(c, params.Get("state"), cookie)
+	err := callback(c, params.Get("state"), cookie)
 	require.NoError(t, err)
 
 	verifier := idp.lastTokenRequest.Get("code_verifier")
@@ -278,8 +282,8 @@ func TestReceiverValidatesIDToken(t *testing.T) {
 			stubNonce = params.Get("nonce")
 			tc.mutate(idp)
 
-			_, err := callback(c, params.Get("state"), cookie)
-			assert.ErrorContains(t, err, tc.errPart)
+			err := callback(c, params.Get("state"), cookie)
+			require.ErrorContains(t, err, tc.errPart)
 		})
 	}
 }
@@ -291,8 +295,8 @@ func TestReceiverRejectsUserinfoFailures(t *testing.T) {
 	stubNonce = params.Get("nonce")
 	idp.userinfoStatus = http.StatusInternalServerError
 
-	_, err := callback(c, params.Get("state"), cookie)
-	assert.ErrorContains(t, err, "userinfo failed (500)")
+	err := callback(c, params.Get("state"), cookie)
+	require.ErrorContains(t, err, "userinfo failed (500)")
 
 	// Subject swap between ID token and userinfo must be rejected.
 	idp2 := newStubIdP(t)
@@ -300,8 +304,8 @@ func TestReceiverRejectsUserinfoFailures(t *testing.T) {
 	params2, cookie2 := startLogin(t, c2)
 	stubNonce = params2.Get("nonce")
 	idp2.userinfoSubject = "user-2"
-	_, err = callback(c2, params2.Get("state"), cookie2)
-	assert.ErrorContains(t, err, "does not match id_token subject")
+	err = callback(c2, params2.Get("state"), cookie2)
+	require.ErrorContains(t, err, "does not match id_token subject")
 }
 
 func TestReceiverHappyPathAndEmailVerification(t *testing.T) {

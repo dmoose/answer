@@ -66,11 +66,11 @@ func seedSites(t *testing.T, engine *xorm.Engine) {
 // resolveWith runs ResolveSite over a synthetic request and reports the
 // resolved site ID (empty when the middleware skipped or aborted) plus the
 // response status and whether the chain continued.
-func resolveWith(sm *SiteMiddleware, method, target, host, slugHeader string) (siteID string, status int, aborted bool) {
+func resolveWith(sm *SiteMiddleware, target, host, slugHeader string) (siteID string, status int, aborted bool) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(w)
-	req := httptest.NewRequest(method, target, nil)
+	req := httptest.NewRequest("GET", target, nil)
 	if host != "" {
 		req.Host = host
 	}
@@ -112,19 +112,19 @@ func TestResolveSite_RecordsSlug(t *testing.T) {
 	assert.Equal(t, "alpha", slugWith(sm, "/s/alpha/questions", "", ""), "path prefix")
 	assert.Equal(t, "alpha", slugWith(sm, "/questions", "alpha.example.com", ""), "subdomain")
 	assert.Equal(t, "default", slugWith(sm, "/questions", "", ""), "fallback names the default site")
-	assert.Equal(t, "", slugWith(sm, "/answer/admin/api/sites", "", "alpha"), "admin API skips resolution")
+	assert.Empty(t, slugWith(sm, "/answer/admin/api/sites", "", "alpha"), "admin API skips resolution")
 }
 
 func TestResolveSite_AbsentSlugUsesDefault(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	siteID, _, aborted := resolveWith(sm, "GET", "/questions", "example.com", "")
+	siteID, _, aborted := resolveWith(sm, "/questions", "example.com", "")
 	assert.False(t, aborted)
 	assert.Equal(t, constant.DefaultSiteID, siteID)
 }
 
 func TestResolveSite_PathPrefixWins(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	siteID, _, aborted := resolveWith(sm, "GET", "/s/alpha/questions", "example.com", "")
+	siteID, _, aborted := resolveWith(sm, "/s/alpha/questions", "example.com", "")
 	assert.False(t, aborted)
 	assert.Equal(t, "site-a", siteID)
 }
@@ -133,32 +133,32 @@ func TestResolveSite_UnknownExplicitSlugIs404(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
 
 	// Page navigation: aborted with a 404 status (SPA shell rendering).
-	_, status, aborted := resolveWith(sm, "GET", "/s/typo/questions", "example.com", "")
+	_, status, aborted := resolveWith(sm, "/s/typo/questions", "example.com", "")
 	assert.True(t, aborted, "unknown explicit slug must abort")
 	assert.Equal(t, http.StatusNotFound, status)
 
 	// API call with a bogus header: aborted, never falls back to default.
-	siteID, _, aborted := resolveWith(sm, "GET", "/answer/api/v1/question/page", "example.com", "typo")
+	siteID, _, aborted := resolveWith(sm, "/answer/api/v1/question/page", "example.com", "typo")
 	assert.True(t, aborted)
 	assert.Empty(t, siteID, "bogus X-Site-Slug must not resolve any site")
 }
 
 func TestResolveSite_SuspendedSiteNotServed(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	_, _, aborted := resolveWith(sm, "GET", "/s/asleep/questions", "example.com", "")
+	_, _, aborted := resolveWith(sm, "/s/asleep/questions", "example.com", "")
 	assert.True(t, aborted, "suspended site must not resolve")
 }
 
 func TestResolveSite_HeaderResolvesForAPI(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	siteID, _, aborted := resolveWith(sm, "GET", "/answer/api/v1/question/page", "example.com", "alpha")
+	siteID, _, aborted := resolveWith(sm, "/answer/api/v1/question/page", "example.com", "alpha")
 	assert.False(t, aborted)
 	assert.Equal(t, "site-a", siteID)
 }
 
 func TestResolveSite_PathBeatsHeader(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	siteID, _, aborted := resolveWith(sm, "GET", "/s/alpha/x", "example.com", "default")
+	siteID, _, aborted := resolveWith(sm, "/s/alpha/x", "example.com", "default")
 	assert.False(t, aborted)
 	assert.Equal(t, "site-a", siteID, "explicit path must outrank the header")
 }
@@ -167,20 +167,20 @@ func TestResolveSite_SubdomainHeuristic(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
 
 	// A first host label that IS a site slug resolves it.
-	siteID, _, aborted := resolveWith(sm, "GET", "/questions", "alpha.example.com", "")
+	siteID, _, aborted := resolveWith(sm, "/questions", "alpha.example.com", "")
 	assert.False(t, aborted)
 	assert.Equal(t, "site-a", siteID)
 
 	// A deployment host label that is NOT a slug falls through to the
 	// default silently (it names the deployment, not a site).
-	siteID, _, aborted = resolveWith(sm, "GET", "/questions", "answer.example.com", "")
+	siteID, _, aborted = resolveWith(sm, "/questions", "answer.example.com", "")
 	assert.False(t, aborted)
 	assert.Equal(t, constant.DefaultSiteID, siteID)
 }
 
 func TestResolveSite_AdminAPISkipsResolution(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
-	siteID, _, aborted := resolveWith(sm, "GET", "/answer/admin/api/dashboard", "example.com", "")
+	siteID, _, aborted := resolveWith(sm, "/answer/admin/api/dashboard", "example.com", "")
 	assert.False(t, aborted)
 	assert.Empty(t, siteID, "admin API must stay site-less")
 }
@@ -188,7 +188,7 @@ func TestResolveSite_AdminAPISkipsResolution(t *testing.T) {
 func TestResolveSite_AdminSkipHonorsBasePath(t *testing.T) {
 	sm := newSiteTestMiddleware(t)
 	sm.SetBasePath("/community")
-	siteID, _, aborted := resolveWith(sm, "GET", "/community/answer/admin/api/dashboard", "example.com", "")
+	siteID, _, aborted := resolveWith(sm, "/community/answer/admin/api/dashboard", "example.com", "")
 	assert.False(t, aborted)
 	assert.Empty(t, siteID, "admin API under a base path must also skip resolution")
 }

@@ -158,19 +158,19 @@ func TestMultisiteMigrationOnSQLite(t *testing.T) {
 	_, err := x.Context(ctx).Exec(
 		"INSERT INTO `tag` (`id`, `slug_name`, `display_name`, `original_text`, `parsed_text`, `site_id`) VALUES (11, 'go', 'Go', '', '', ?)",
 		constant.DefaultSiteID)
-	assert.Error(t, err, "duplicate (slug, site) must violate the composite unique")
+	require.Error(t, err, "duplicate (slug, site) must violate the composite unique")
 	_, err = x.Context(ctx).Exec(
 		"INSERT INTO `tag` (`id`, `slug_name`, `display_name`, `original_text`, `parsed_text`, `site_id`) VALUES (12, 'go', 'Go', '', '', 'site-b')")
-	assert.NoError(t, err, "same slug on another site must be allowed")
+	require.NoError(t, err, "same slug on another site must be allowed")
 
 	_, err = x.Context(ctx).Exec(
 		"INSERT INTO `config` (`key`, `value`, `site_id`) VALUES ('daily_rank_limit', '300', ?)",
 		constant.DefaultSiteID)
-	assert.NoError(t, err, "config override on another site id must be allowed")
+	require.NoError(t, err, "config override on another site id must be allowed")
 	_, err = x.Context(ctx).Exec(
 		"INSERT INTO `config` (`key`, `value`, `site_id`) VALUES ('daily_rank_limit', '400', ?)",
 		constant.DefaultSiteID)
-	assert.Error(t, err, "duplicate (key, site) must violate the composite unique")
+	require.Error(t, err, "duplicate (key, site) must violate the composite unique")
 
 	// Existing content backfilled onto the default site; config rows stay
 	// site_id='' as the global fallback tier.
@@ -375,7 +375,7 @@ func TestMigrateSplitsLedgerEndToEnd(t *testing.T) {
 	var n int64
 	_, err = x.SQL("SELECT COUNT(*) FROM `user_site_role_rel`").Get(&n)
 	require.NoError(t, err)
-	assert.Greater(t, n, int64(0), "fork data survives the split")
+	assert.Positive(t, n, "fork data survives the split")
 
 	// Running upgrade again is a pure no-op.
 	require.NoError(t, Migrate(false, dbConf, &data.CacheConf{}, ""))
