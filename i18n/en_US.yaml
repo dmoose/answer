@@ -1908,6 +1908,7 @@ ui:
     http_error: HTTP Error {{ code }}
     desc_403: You don't have permission to access this page.
     desc_404: Unfortunately, this page doesn't exist.
+    desc_site_missing: Unfortunately, this site doesn't exist.
     desc_50X: The server encountered an error and could not complete your request.
     back_home: Back to homepage
   page_maintenance:

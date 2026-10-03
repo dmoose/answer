@@ -101,6 +101,18 @@ class Request {
         } = error.response || {};
         const { data = {}, msg = '' } = errBody || {};
 
+        // The server refused the site this page names. Nothing loaded for
+        // it is trustworthy, so the app swaps to its site-not-found page.
+        // The admin API skips site resolution and reports its own 404s.
+        if (
+          status === 404 &&
+          errBody?.reason === 'error.site.not_found' &&
+          !errConfig?.url?.includes('/admin/api')
+        ) {
+          currentSiteStore.getState().markNotFound();
+          return Promise.reject(false);
+        }
+
         const errorObject: {
           code: any;
           msg: string;

@@ -27,11 +27,13 @@ interface IType {
 }
 
 const loginSetting = create<IType>((set) => ({
+  // Closed until the server's settings arrive: a failed or pending siteinfo
+  // fetch must never offer sign-up or password login the site has turned off.
   login: {
-    allow_new_registrations: true,
-    allow_email_registrations: true,
+    allow_new_registrations: false,
+    allow_email_registrations: false,
     allow_email_domains: [],
-    allow_password_login: true,
+    allow_password_login: false,
     require_email_verification: true,
   },
   update: (params) =>

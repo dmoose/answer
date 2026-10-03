@@ -24,6 +24,8 @@ import './i18n/init';
 import '@/utils/pluginKit';
 import { useMergeRoutes } from '@/router';
 import InitialLoadingPlaceholder from '@/components/InitialLoadingPlaceholder';
+import SiteNotFound from '@/components/SiteNotFound';
+import currentSiteStore from '@/stores/currentSite';
 
 function getSiteBasename(): string {
   const base = process.env.REACT_APP_BASE_URL || '';
@@ -33,6 +35,10 @@ function getSiteBasename(): string {
 
 function App() {
   const routes = useMergeRoutes();
+  const siteMissing = currentSiteStore((s) => s.notFound);
+  if (siteMissing) {
+    return <SiteNotFound />;
+  }
   if (routes.length === 0) {
     return <InitialLoadingPlaceholder />;
   }

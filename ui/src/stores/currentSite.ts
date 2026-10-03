@@ -31,7 +31,10 @@ export interface Site {
 interface CurrentSiteState {
   currentSite: Site | null;
   sites: Site[];
+  // The URL or request named a site the server does not know.
+  notFound: boolean;
   setSites: (sites: Site[]) => void;
+  markNotFound: () => void;
 }
 
 export function siteSlugFromURL(): string {
@@ -72,10 +75,16 @@ function resolveCurrentSite(sites: Site[]): Site | null {
 const currentSiteStore = create<CurrentSiteState>((set) => ({
   currentSite: null,
   sites: [],
+  notFound: false,
   setSites: (sites) => {
     const current = resolveCurrentSite(sites);
+    if (!current && sites.length > 0 && siteSlugFromURL()) {
+      set({ sites, currentSite: null, notFound: true });
+      return;
+    }
     set({ sites, currentSite: current });
   },
+  markNotFound: () => set({ currentSite: null, notFound: true }),
 }));
 
 export default currentSiteStore;
