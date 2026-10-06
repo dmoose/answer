@@ -18,7 +18,7 @@
  */
 
 import React, { FormEvent, useState, useEffect } from 'react';
-import { Container, Form, Button, Col } from 'react-bootstrap';
+import { Container, Form, Button, Col, Alert } from 'react-bootstrap';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -70,6 +70,9 @@ const Index: React.FC = () => {
   });
 
   const [step, setStep] = useState(1);
+  // Set by the server when an external sign-in could not be completed.
+  const externalError = searchParams.get('error');
+  const externalErrorMsg = searchParams.get('msg');
 
   const handleChange = (params: FormDataType) => {
     setFormData({ ...formData, ...params });
@@ -187,6 +190,16 @@ const Index: React.FC = () => {
       <WelcomeTitle />
       {step === 1 ? (
         <Col className="mx-auto" md={6} lg={4} xl={3}>
+          {externalError && (
+            <Alert variant="danger">
+              {externalErrorMsg ||
+                t(
+                  externalError === 'login'
+                    ? 'external_login_failed'
+                    : 'external_connector_failed',
+                )}
+            </Alert>
+          )}
           <PluginRender
             type={PluginType.Captcha}
             slug_name="captcha_basic"

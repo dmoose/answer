@@ -1257,6 +1257,8 @@ ui:
       url_text: You can also give the activation link above to the user.
   login:
     login_to_continue: Log in to continue
+    external_connector_failed: Sign-in could not be completed. Start again from this page and finish in the same browser you started in.
+    external_login_failed: Sign-in failed. Your account could not be created or matched on this site.
     info_sign: Don't have an account? <1>Sign up</1>
     info_login: Already have an account? <1>Log in</1>
     agreements: By registering, you agree to the <1>privacy policy</1> and <3>terms of service</3>.

@@ -21,6 +21,7 @@ package controller
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -32,12 +33,14 @@ import (
 
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/base/middleware"
+	"github.com/apache/answer/internal/base/translator"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/export"
 	"github.com/apache/answer/internal/service/siteinfo_common"
 	"github.com/apache/answer/internal/service/user_external_login"
 	"github.com/apache/answer/plugin"
 	"github.com/gin-gonic/gin"
+	"github.com/segmentfault/pacman/errors"
 	"github.com/segmentfault/pacman/log"
 )
 
@@ -169,7 +172,7 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		userInfo, err := connector.ConnectorReceiver(ctx, receiverURL)
 		if err != nil {
 			log.Errorf("connector received failed, error info: %v, response data is: %s", err, userInfo.MetaInfo)
-			ctx.Redirect(http.StatusFound, "/50x")
+			loginFailed(ctx, siteGeneral.SiteUrl, "connector", "")
 			return
 		}
 		log.Debugf("connector %s received subject %s", connector.ConnectorSlugName(), userInfo.ExternalID)
@@ -186,13 +189,13 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		stateInfo, err := cc.userExternalService.ConsumeOAuthState(ctx, ctx.Query("state"))
 		if err != nil {
 			log.Errorf("get connector oauth state failed: %v", err)
-			ctx.Redirect(http.StatusFound, "/50x")
+			loginFailed(ctx, siteGeneral.SiteUrl, "connector", "")
 			return
 		}
 		if stateInfo != nil && stateInfo.Provider != connector.ConnectorSlugName() {
 			log.Errorf("connector oauth state provider mismatch: %s != %s",
 				stateInfo.Provider, connector.ConnectorSlugName())
-			ctx.Redirect(http.StatusFound, "/50x")
+			loginFailed(ctx, siteGeneral.SiteUrl, "connector", "")
 			return
 		}
 		// The callback URL carries no site, so the request resolved to the
@@ -214,11 +217,19 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 		resp, err := cc.userExternalService.ExternalLogin(ctx, u)
 		if err != nil {
 			log.Errorf("external login failed: %v", err)
-			ctx.Redirect(http.StatusFound, "/50x")
+			// A client-class error names a condition the user or operator
+			// can act on (handle taken or reserved); show its translated
+			// reason, never the internal detail.
+			var e *errors.Error
+			msg := ""
+			if stderrors.As(err, &e) && e.Code < http.StatusInternalServerError {
+				msg = translator.Tr(handler.GetLangByCtx(ctx), e.Reason)
+			}
+			loginFailed(ctx, landing, "login", msg)
 			return
 		}
 		if len(resp.ErrMsg) > 0 {
-			ctx.Redirect(http.StatusFound, fmt.Sprintf("/50x?title=%s&msg=%s", resp.ErrTitle, resp.ErrMsg))
+			loginFailed(ctx, landing, "login", resp.ErrMsg)
 			return
 		}
 		if len(resp.AccessToken) > 0 {
@@ -229,6 +240,17 @@ func (cc *ConnectorController) ConnectorRedirect(connector plugin.Connector) (fn
 				landing, resp.BindingKey))
 		}
 	}
+}
+
+// loginFailed lands the browser back on the login page with a code the
+// page explains, instead of a bare 50x. msg, when set, is already
+// translated and user-safe.
+func loginFailed(ctx *gin.Context, landing, code, msg string) {
+	q := url.Values{"error": {code}}
+	if msg != "" {
+		q.Set("msg", msg)
+	}
+	ctx.Redirect(http.StatusFound, landing+"/users/login?"+q.Encode())
 }
 
 // ConnectorsInfo get all enabled connectors

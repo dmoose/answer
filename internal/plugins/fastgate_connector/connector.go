@@ -143,8 +143,11 @@ func (c *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		return userInfo, fmt.Errorf("unknown, expired or replayed state")
 	}
 	bind, err := ctx.Cookie(bindCookieName)
-	if err != nil || subtle.ConstantTimeCompare([]byte(bind), []byte(pend.bind)) != 1 {
-		return userInfo, fmt.Errorf("login attempt not bound to this browser")
+	if err != nil {
+		return userInfo, fmt.Errorf("login attempt not bound to this browser: bind cookie absent (link opened in another browser or profile?)")
+	}
+	if subtle.ConstantTimeCompare([]byte(bind), []byte(pend.bind)) != 1 {
+		return userInfo, fmt.Errorf("login attempt not bound to this browser: bind cookie is from a different attempt (login started twice?)")
 	}
 	ctx.SetSameSite(http.SameSiteLaxMode)
 	ctx.SetCookie(bindCookieName, "", -1, "/", "", false, true)
