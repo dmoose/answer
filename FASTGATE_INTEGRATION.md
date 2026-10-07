@@ -14,7 +14,25 @@ Standard OIDC authorization code flow against fastgate, hardened:
 
 - **Per-request `state`** (server-side, single-use, 10-min TTL) plus a
   browser-bind cookie (`fg_oidc_bind`) — a callback URL can only complete
-  in the browser that started the login, and never twice.
+  in the browser that started the login, and never twice. The magic link
+  must therefore be opened in the browser profile that clicked "Connect
+  with Fastgate"; the log distinguishes a missing cookie (other browser or
+  profile) from a stale one (login started twice).
+- **Failures land on the login page**, never `/50x`: the callback redirects
+  to `/users/login?error=connector` (state, cookie or token problems) or
+  `?error=login&msg=<translated reason>` (account could not be created or
+  matched: handle reserved locally, handle taken, email already on an
+  unbound local user). The login page shows the message above the connector
+  button. Internal detail stays in the log.
+- **Reserved handles are reserved twice.** Fastgate's handle validator and
+  Answer's `reserved-usernames.json` (which includes `support`) are both
+  enforced; `applyAuthoritativeUsername` refuses a handle Answer reserves,
+  so a handle forced into fastgate's DB still cannot log in here.
+- **A pre-existing local user with the same email blocks the SSO login**
+  (upstream rule: an unbound local account is never auto-bound by email).
+  With password login off there is no way to bind it. Do not pre-create
+  users in Admin for people who will arrive via fastgate; let the first
+  login create them under the fastgate handle.
 - **PKCE (S256)** and a per-request **`nonce`**.
 - **ID token fully validated**: EdDSA signature against fastgate's `/jwks`
   (cached 1h), `iss`, `aud`, `exp`/`iat`, and the nonce. The userinfo
