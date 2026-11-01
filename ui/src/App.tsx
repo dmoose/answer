@@ -23,14 +23,14 @@ import './i18n/init';
 
 import '@/utils/pluginKit';
 import { useMergeRoutes } from '@/router';
+import { REACT_BASE_PATH } from '@/router/alias';
 import InitialLoadingPlaceholder from '@/components/InitialLoadingPlaceholder';
 import SiteNotFound from '@/components/SiteNotFound';
 import currentSiteStore from '@/stores/currentSite';
 
 function getSiteBasename(): string {
-  const base = process.env.REACT_APP_BASE_URL || '';
   const match = window.location.pathname.match(/^(\/s\/[^/]+)/);
-  return match ? match[1] : base;
+  return match ? match[1] : REACT_BASE_PATH;
 }
 
 function App() {

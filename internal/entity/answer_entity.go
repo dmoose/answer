@@ -71,6 +71,7 @@ type PersonalAnswerPageQueryCond struct {
 	UserID      string
 	Order       string
 	ShowPending bool
+	ShowHidden  bool
 }
 
 // TableName answer table name
