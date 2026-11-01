@@ -35,3 +35,6 @@ dist/
 # Environment variables
 .env
 answer-dev
+
+# Claude Code session files (gochecks hook, skill, doc)
+/.claude/
