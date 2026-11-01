@@ -14,9 +14,12 @@ ENV BUILD_DIR ${GOPATH}/src/${PACKAGE}
 COPY . ${BUILD_DIR}
 COPY --from=ui-builder /app/ui/build ${BUILD_DIR}/ui/build
 WORKDIR ${BUILD_DIR}
+# Version follows the upstream release merged into this fork; the workflow
+# passes the commit as REVISION.
+ARG REVISION=
 RUN apk --no-cache add build-base git bash \
     && CGO_ENABLED=0 go build \
-       -ldflags="-X github.com/apache/answer/cmd.Version=2.0.2-multisite -extldflags -static" \
+       -ldflags="-X github.com/apache/answer/cmd.Version=2.0.3-multisite -X github.com/apache/answer/cmd.Revision=${REVISION} -X github.com/apache/answer/cmd.Time=$(date +%s) -extldflags -static" \
        -o answer ./cmd/answer
 
 RUN chmod 755 answer && cp answer /usr/bin/answer

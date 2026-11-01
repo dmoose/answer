@@ -98,6 +98,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.multisite
+          build-args: REVISION=${{ github.sha }}
           platforms: linux/amd64    # Hetzner is x86; ARM64 doubles CI time for no consumer
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
